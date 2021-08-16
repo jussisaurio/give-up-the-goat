@@ -221,7 +221,7 @@ io.on("connection", (socket) => {
               return true;
             if ("colors" in cc && cc.colors.includes(updatedGame.scapegoat))
               return true;
-            return false;
+            return cc.type === "joker";
           });
 
           console.log({ cardsWithScapegoatColor });

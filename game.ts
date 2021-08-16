@@ -1104,7 +1104,7 @@ export const playTurn = (
       if ("color" in c) return c.color;
       if ("colors" in c) return c.colors.join("/");
       if (c.type === "neutral") return "GREY";
-      return "???";
+      return "RAINBOW";
     }
 
     return [
