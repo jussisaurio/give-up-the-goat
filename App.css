@@ -324,6 +324,24 @@ select {
   animation: bounce 1s ease infinite;
 }
 
+.fixedCenterContainer {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50%;
+  height: 50%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+}
+
+h1 {
+  font-size: 3rem;
+}
+
 .gameLog {
   position: fixed;
   bottom: 0.3rem;

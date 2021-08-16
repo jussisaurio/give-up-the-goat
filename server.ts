@@ -224,8 +224,6 @@ io.on("connection", (socket) => {
             return cc.type === "joker";
           });
 
-          console.log({ cardsWithScapegoatColor });
-
           const successfulFrame =
             cardsWithScapegoatColor.length >= updatedGame.players.length - 1;
 
