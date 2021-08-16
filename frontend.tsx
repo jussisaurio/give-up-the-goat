@@ -210,7 +210,10 @@ const GameScreen = ({
         <ul>
           {game.playerInfos.map((pi) => (
             <div key={pi.id}>
-              <strong>{pi.nickname}</strong>
+              <strong>
+                {pi.nickname}
+                {pi.nickname === nickname ? "(you)" : ""}
+              </strong>
             </div>
           ))}
         </ul>
