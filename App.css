@@ -1,0 +1,442 @@
+/* Box sizing rules */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Remove default margin */
+body,
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+/* * {
+  border: 1px solid red;
+} */
+
+/* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */
+ul[role="list"],
+ol[role="list"] {
+  list-style: none;
+}
+
+/* Set core root defaults */
+html:focus-within {
+  scroll-behavior: smooth;
+}
+
+/* Set core body defaults */
+body {
+  font-size: 2vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+  background-color: antiquewhite;
+  text-rendering: optimizeSpeed;
+  line-height: 1.5;
+}
+
+/* A elements that don't have a class get default styles */
+a:not([class]) {
+  text-decoration-skip-ink: auto;
+}
+
+/* Make images easier to work with */
+img,
+picture {
+  max-width: 100%;
+  display: block;
+}
+
+/* Inherit fonts for inputs and buttons */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+/* Remove all animations, transitions and smooth scroll for people that prefer not to see them */
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* app css */
+
+.container {
+  display: grid;
+  grid-template-columns: 0.7fr 0.7fr 0.7fr 0.7fr;
+  grid-template-rows: 1.4fr 1.4fr 1.4fr 1.4fr;
+  gap: 0px 0px;
+  grid-template-areas:
+    ". player-4 player-4 ."
+    "player-3 common common player-5"
+    "player-2 common common player-6"
+    ". player-self player-self .";
+}
+
+.player-area {
+  position: relative;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+  margin: 0.5rem;
+  padding-top: 1rem;
+  background-color: burlywood;
+}
+
+.player-self {
+  grid-area: player-self;
+}
+.player-2 {
+  grid-area: player-2;
+}
+.player-3 {
+  grid-area: player-3;
+}
+.player-4 {
+  grid-area: player-4;
+}
+.player-5 {
+  grid-area: player-5;
+}
+.player-6 {
+  grid-area: player-6;
+}
+.common {
+  grid-area: common;
+  display: grid;
+  justify-content: center;
+  align-items: center;
+  grid-template-columns: repeat(auto-fill, 22%);
+  gap: 0.5rem 0.5rem;
+  background-color: chocolate;
+  margin: 1rem;
+  border-radius: 2rem;
+  position: relative;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+}
+
+.cops {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  border-radius: 50%;
+  color: white;
+  text-align: center;
+  background-color: red;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 5rem;
+  height: 5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.cops:hover {
+  animation: bounce 0.2s ease infinite;
+}
+
+.cops-disabled {
+  background-color: grey;
+  opacity: 50%;
+  cursor: initial;
+}
+
+.cops-disabled:hover {
+  animation: none;
+}
+
+.locationCard {
+  background-color: darkslategray;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  height: 80%;
+  max-height: 80%;
+  justify-content: flex-start;
+  align-items: center;
+  word-wrap: break-word;
+  color: white;
+  border-radius: 0.2rem;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+  cursor: pointer;
+}
+
+.locationCard:hover {
+  background-color: slategray;
+}
+
+.locationContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cardsContainer {
+  display: flex;
+  cursor: pointer;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  width: 100%;
+}
+
+.playerInfo {
+  padding: 0.5vh;
+  border-radius: 1vh;
+}
+
+.playerTokenContainer {
+  display: flex;
+}
+
+.playerToken {
+  border: 1px solid black;
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+  margin: 0.2rem;
+}
+
+.card {
+  border: 2px solid black;
+  border-radius: 5px;
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  align-items: center;
+  width: 6vh;
+  height: 10vh;
+  background-color: #654321;
+}
+
+.locationDealtCard {
+  width: 6vh;
+  height: 10vh;
+}
+
+.preparationTokenContainer {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+.stashContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.finishedOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 100vw;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.finishedOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  min-width: 100vw;
+  min-height: 100vh;
+  background-color: black;
+  opacity: 90%;
+}
+
+.finishedContent {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  min-width: 100vw;
+  min-height: 100vh;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.stashCard {
+  width: 3vh;
+  height: 5vh;
+}
+
+.preparationToken {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  color: black;
+  font-size: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: gold;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+}
+
+.turnAnimation {
+  animation: bounce 1s ease infinite;
+}
+
+.loader,
+.loader:before,
+.loader:after {
+  background: white;
+  -webkit-animation: load1 1s infinite ease-in-out;
+  animation: load1 1s infinite ease-in-out;
+  width: 0.4rem;
+  height: 1.6rem;
+}
+.loader {
+  color: white;
+  opacity: 80%;
+  text-indent: -9999em;
+  position: absolute;
+  top: 50%;
+  right: 50%;
+  font-size: 11px;
+  -webkit-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-animation-delay: -0.16s;
+  animation-delay: -0.16s;
+}
+.loader:before,
+.loader:after {
+  position: absolute;
+  top: 0;
+  content: "";
+}
+.loader:before {
+  left: -0.6rem;
+  -webkit-animation-delay: -0.32s;
+  animation-delay: -0.32s;
+}
+.loader:after {
+  left: 0.6rem;
+}
+@-webkit-keyframes load1 {
+  0%,
+  80%,
+  100% {
+    box-shadow: 0 0;
+    height: 1rem;
+  }
+  40% {
+    box-shadow: 0 -0.4rem;
+    height: 1.25rem;
+  }
+}
+@keyframes load1 {
+  0%,
+  80%,
+  100% {
+    box-shadow: 0 0;
+    height: 1rem;
+  }
+  40% {
+    box-shadow: 0 -0.4rem;
+    height: 1.2em;
+  }
+}
+
+@-webkit-keyframes bounce {
+  0%,
+  100% {
+    -webkit-transform: translateY(0);
+  }
+  50% {
+    -webkit-transform: translateY(-5px);
+  }
+}
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.bounce {
+  -webkit-animation-name: bounce;
+  animation-name: bounce;
+}
+
+@media only screen and (orientation: portrait) {
+  .common {
+    display: flex;
+    grid-template-columns: unset;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+  }
+  .locationTitle {
+    min-height: unset;
+    width: 100%;
+  }
+  .locationCard {
+    flex-direction: column;
+    flex-wrap: wrap;
+    width: 90%;
+    height: 18%;
+    max-height: 18%;
+  }
+
+  .locationContent {
+    flex-direction: row;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .locationDealtCard {
+    width: 2.5vh;
+    height: 4vh;
+  }
+}

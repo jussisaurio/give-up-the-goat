@@ -1,0 +1,4 @@
+node_modules
+.DS_Store
+dist/assets/bundle.css
+dist/assets/bundle.js
