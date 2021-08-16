@@ -602,6 +602,18 @@ const GameScreen = ({
       >
         GO TO THE COPS
       </div>
+      {game.events.length > 0 && (
+        <div className="gameLog">
+          {[...game.events]
+            .reverse()
+            .slice(0, 10)
+            .map((e) => (
+              <div key={e} className="gameLogEntry">
+                {e}
+              </div>
+            ))}
+        </div>
+      )}
       {game.state === "FINISHED" && (
         <>
           <div className="finishedOverlay"></div>

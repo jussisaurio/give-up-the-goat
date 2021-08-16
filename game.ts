@@ -324,6 +324,7 @@ type StartedGame = {
   preparationTokens: 0 | 1 | 2;
   locations: LocationArea[];
   playerInfos: PlayerInfo[];
+  events: string[];
 };
 
 export type Game =
@@ -509,7 +510,8 @@ export const activateGame = (game: Game): Game => {
     players: finalPlayers,
     locations,
     preparationTokens: 2,
-    scapegoat
+    scapegoat,
+    events: []
   };
 };
 
@@ -558,6 +560,10 @@ export const playTurn = (
           true,
           {
             ...game,
+            events: [
+              ...game.events,
+              `Player ${activePlayer.playerInfo.nickname} has called the cops!`
+            ],
             state: "PAUSED_FOR_COPS_CHECK"
           }
         ];
@@ -579,6 +585,10 @@ export const playTurn = (
             true,
             {
               ...game,
+              events: [
+                ...game.events,
+                `Player ${activePlayer.playerInfo.nickname} has initiated a frame attempt!`
+              ],
               players: game.players.map((p) => {
                 if (p !== activePlayer) return p;
                 return {
@@ -594,6 +604,10 @@ export const playTurn = (
             true,
             {
               ...game,
+              events: [
+                ...game.events,
+                `Player ${activePlayer.playerInfo.nickname} is picking a player to steal a preparation token from`
+              ],
               players: game.players.map((p) => {
                 if (p !== activePlayer) return p;
                 return {
@@ -617,6 +631,10 @@ export const playTurn = (
             true,
             {
               ...game,
+              events: [
+                ...game.events,
+                `Player ${activePlayer.playerInfo.nickname} has taken the second preparation token. Framing/stealing is now possible.`
+              ],
               substate: {
                 state: "AWAITING_EVIDENCE_SWAP",
                 location: "FRAME/STEAL"
@@ -648,6 +666,10 @@ export const playTurn = (
             true,
             {
               ...game,
+              events: [
+                ...game.events,
+                `Player ${activePlayer.playerInfo.nickname} has taken the first preparation token`
+              ],
               substate: {
                 state: "AWAITING_EVIDENCE_SWAP",
                 location: "PREPARE"
@@ -670,6 +692,10 @@ export const playTurn = (
           true,
           {
             ...game,
+            events: [
+              ...game.events,
+              `Player ${activePlayer.playerInfo.nickname} is choosing a player to spy on`
+            ],
             players: game.players.map((p) => {
               if (p.playerInfo.id !== playerId) return p;
               return {
@@ -686,6 +712,10 @@ export const playTurn = (
           true,
           {
             ...game,
+            events: [
+              ...game.events,
+              `Player ${activePlayer.playerInfo.nickname} is looking at the stash`
+            ],
             players: game.players.map((p) => {
               if (p.playerInfo.id !== playerId) return p;
               return {
@@ -702,6 +732,10 @@ export const playTurn = (
           true,
           {
             ...game,
+            events: [
+              ...game.events,
+              `Player ${activePlayer.playerInfo.nickname} is choosing a player to trade with`
+            ],
             players: game.players.map((p) => {
               if (p.playerInfo.id !== playerId) return p;
               return {
@@ -737,6 +771,10 @@ export const playTurn = (
       true,
       {
         ...game,
+        events: [
+          ...game.events,
+          `Player ${activePlayer.playerInfo.nickname} will trade cards with ${otherPlayer.playerInfo.nickname}`
+        ],
         substate: {
           state: "AWAITING_TRADE_CHOOSE_CARDS",
           otherPlayerId: otherPlayer.playerInfo.id,
@@ -889,6 +927,10 @@ export const playTurn = (
       true,
       {
         ...game,
+        events: [
+          ...game.events,
+          `Player ${activePlayer.playerInfo.nickname} is looking at ${otherPlayer.playerInfo.nickname}'s hand`
+        ],
         substate: {
           state: "AWAITING_SPY_CONFIRM",
           otherPlayerId: otherPlayer.playerInfo.id
@@ -944,6 +986,12 @@ export const playTurn = (
       true,
       {
         ...game,
+        events: [
+          ...game.events,
+          `Player ${activePlayer.playerInfo.nickname} has taken card #${
+            action.stashCardIndex + 1
+          } from Stash`
+        ],
         substate: {
           state: "AWAITING_STASH_RETURN_CARD",
           stashCardIndex: action.stashCardIndex
@@ -999,6 +1047,10 @@ export const playTurn = (
       true,
       {
         ...game,
+        events: [
+          ...game.events,
+          `Player ${activePlayer.playerInfo.nickname} has returned a card to slot #2 in Stash`
+        ],
         substate: { state: "AWAITING_EVIDENCE_SWAP", location: "STASH" },
         locations: game.locations.map((l) => {
           if (l.name !== "STASH") return l;
@@ -1041,17 +1093,34 @@ export const playTurn = (
     const swapLocationCard =
       swapLocation && "card" in swapLocation && swapLocation.card;
 
-    if (!playerCard || !swapLocationCard) {
+    if (!playerCard || !swapLocationCard || !swapLocation) {
       console.error("Invalid action by " + playerId);
       console.error(JSON.stringify(action, null, 2));
       console.error(JSON.stringify(game, null, 2));
       return [false, game];
     }
 
+    function formatCardColor(c: DealtCard) {
+      if ("color" in c) return c.color;
+      if ("colors" in c) return c.colors.join("/");
+      if (c.type === "neutral") return "GREY";
+      return "???";
+    }
+
     return [
       true,
       {
         ...game,
+        events: [
+          ...game.events,
+          `Player ${
+            activePlayer.playerInfo.nickname
+          } has taken the face-up ${formatCardColor(
+            swapLocationCard
+          )} card from ${
+            swapLocation.userFacingName
+          } and replaced it with ${formatCardColor(playerCard)}`
+        ],
         activePlayer: (game.activePlayer + 1) % game.players.length,
         substate: { state: "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION" },
         locations: game.locations.map((l) => {
@@ -1131,6 +1200,10 @@ export const playTurn = (
       true,
       {
         ...game,
+        events: [
+          ...game.events,
+          `Player ${activePlayer.playerInfo.nickname} steals a preparation token from ${otherPlayer.playerInfo.nickname}`
+        ],
         substate: { state: "AWAITING_EVIDENCE_SWAP", location: "FRAME/STEAL" },
         players: game.players.map((p) => {
           if (p !== otherPlayer && p !== activePlayer) return p;
@@ -1188,6 +1261,10 @@ export const playTurn = (
         true,
         {
           ...game,
+          events: [
+            ...game.events,
+            `Player ${player.playerInfo.nickname} has chosen a card for the Frame Attempt`
+          ],
           substate: { state: "AWAITING_FRAME_CHOOSE_CARDS", cards }
         }
       ];
@@ -1197,6 +1274,10 @@ export const playTurn = (
       true,
       {
         ...game,
+        events: [
+          ...game.events,
+          `Player ${player.playerInfo.nickname} has chosen a card for the Frame Attempt`
+        ],
         substate: { state: "AWAITING_FRAME_CHOOSE_CARDS", cards },
         state: "PAUSED_FOR_FRAME_CHECK",
         frameCards: cards

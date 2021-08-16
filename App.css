@@ -324,6 +324,26 @@ select {
   animation: bounce 1s ease infinite;
 }
 
+.gameLog {
+  position: fixed;
+  bottom: 0.3rem;
+  left: 0.3rem;
+  width: 350px;
+  min-height: 100px;
+  height: 100px;
+  overflow-x: none;
+  overflow-y: scroll;
+  font-size: 0.7rem;
+  color: black;
+  background-color: white;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+}
+
+.gameLogEntry {
+  width: 100%;
+  border-bottom: 1px dashed slategray;
+}
+
 .loader,
 .loader:before,
 .loader:after {

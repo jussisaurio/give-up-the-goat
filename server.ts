@@ -165,6 +165,14 @@ io.on("connection", (socket) => {
             const finishedGame: Game = {
               ...updatedGame,
               state: "FINISHED",
+              events: [
+                ...game.events,
+                `Player ${
+                  updatedGame.players.find(
+                    (p) => p.color === updatedGame.scapegoat
+                  )!.playerInfo.nickname
+                } has won the game after the cops were called!`
+              ],
               winnerPlayerIds: [
                 updatedGame.players.find(
                   (p) => p.color === updatedGame.scapegoat
@@ -226,6 +234,14 @@ io.on("connection", (socket) => {
               const finishedGame: Game = {
                 ...updatedGame,
                 state: "FINISHED",
+                events: [
+                  ...game.events,
+                  `The Scapegoat, ${
+                    updatedGame.players.find(
+                      (p) => p.color === updatedGame.scapegoat
+                    )!.playerInfo.nickname
+                  } , has been successfully framed and the other players win!`
+                ],
                 winnerPlayerIds: updatedGame.players
                   .filter((p) => p.color !== updatedGame.scapegoat)
                   .map((p) => p.playerInfo.id)
@@ -243,6 +259,10 @@ io.on("connection", (socket) => {
               const continuingGame: Game = {
                 ...updatedGame,
                 state: "ONGOING",
+                events: [
+                  ...game.events,
+                  "The frame attempt fails due to insufficient evidence!"
+                ],
                 substate: {
                   state: "AWAITING_EVIDENCE_SWAP",
                   location: "FRAME/STEAL"
