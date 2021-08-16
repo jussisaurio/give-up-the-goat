@@ -355,7 +355,8 @@ const GameScreen = ({
     >
       <div className="player-area player-self">
         <div style={{ color: me.color }} className={classNameMe}>
-          {playerWithTurn === me ? "Your turn. " : ""}
+          {`You are ${me.playerInfo.nickname}. `}
+          {playerWithTurn === me ? "It's your turn! " : ""}
           {publicState && publicState.players.includes(me)
             ? publicState.message + ". "
             : ""}
