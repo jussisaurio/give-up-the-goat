@@ -466,6 +466,8 @@ export const activateGame = (game: Game): Game => {
     throw Error("Invalid number of players");
   }
 
+  shuffle(game.playerInfos);
+
   const playerCount = unverifiedPlayerCount as PlayerCount;
 
   const deck = shuffle(
