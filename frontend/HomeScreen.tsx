@@ -4,14 +4,10 @@ import { TitleAndLogo } from "./TitleAndLogo";
 
 type Props = {
   nickname: String;
-  socket: Socket;
+  onCreateGameClick: (e: React.MouseEvent) => void;
 };
 
-export const HomeScreen = ({ nickname, socket }: Props) => {
-  const onCreateGameClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    socket.emit("CLIENT_EVENT", { type: "GAME_CREATE", payload: { nickname } });
-  };
+export const HomeScreen = ({ nickname, onCreateGameClick }: Props) => {
   return (
     <section className="fixedCenterContainer">
       <TitleAndLogo />

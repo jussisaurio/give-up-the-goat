@@ -915,10 +915,15 @@ const App = () => {
     }
   }
 
+  const onCreateGameClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    socket.emit("CLIENT_EVENT", { type: "GAME_CREATE", payload: { nickname } });
+  };
+
   return socket.connected ? (
     <Switch>
       <Route exact path="/">
-        <HomeScreen nickname={nickname} socket={socket} />
+        <HomeScreen nickname={nickname} onCreateGameClick={onCreateGameClick} />
       </Route>
       <Route path="/game">
         <GameScreen
