@@ -9,6 +9,7 @@ type Props = {
   className?: string;
   style?: any;
   disabled?: boolean;
+  selectable?: boolean;
   onClick: (...args: any) => void;
 };
 
@@ -16,25 +17,31 @@ const BaseCard: React.FC<Omit<Props, "card">> = ({
   style,
   disabled,
   className,
+  selectable = false,
   onClick,
   children
-}) => (
-  <div
-    onClick={disabled ? noop : onClick}
-    className={"card" + (className ? " " + className : "")}
-    style={{
-      ...(disabled && { opacity: "50%", cursor: "initial" }),
-      ...style
-    }}
-  >
-    {children}
-  </div>
-);
+}) => {
+  const base = "card" + (className ? " " + className : "");
+  const cls = !disabled && selectable ? "selectable " + base : base;
+  return (
+    <div
+      onClick={disabled ? noop : onClick}
+      className={cls}
+      style={{
+        ...(disabled && { opacity: "50%", cursor: "initial" }),
+        ...style
+      }}
+    >
+      {children}
+    </div>
+  );
+};
 
 export const PlayingCard = ({
   card,
   className,
   style,
+  selectable = false,
   disabled = false,
   onClick
 }: Props) => {
@@ -43,6 +50,7 @@ export const PlayingCard = ({
       <BaseCard
         onClick={onClick}
         disabled={disabled}
+        selectable={selectable}
         className={className}
         style={{
           backgroundColor: "#222",
@@ -61,6 +69,7 @@ export const PlayingCard = ({
     return (
       <BaseCard
         onClick={onClick}
+        selectable={selectable}
         disabled={disabled}
         className={className}
         style={{
@@ -78,6 +87,7 @@ export const PlayingCard = ({
     return (
       <BaseCard
         onClick={onClick}
+        selectable={selectable}
         disabled={disabled}
         className={className}
         style={{
@@ -95,6 +105,7 @@ export const PlayingCard = ({
     return (
       <BaseCard
         onClick={onClick}
+        selectable={selectable}
         disabled={disabled}
         className={className}
         style={{
@@ -113,6 +124,7 @@ export const PlayingCard = ({
   return (
     <BaseCard
       onClick={onClick}
+      selectable={selectable}
       disabled={disabled}
       className={className}
       style={{

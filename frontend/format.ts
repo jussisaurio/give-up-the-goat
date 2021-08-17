@@ -1,6 +1,6 @@
 import {
   DealtCard,
-  Game,
+  GameInStartedState,
   GoatPlayer,
   LocationArea,
   PlayerColor,
@@ -120,7 +120,10 @@ export const formatLogEntry = (e: UserFacingGameEvent, game: StartedGame) => {
   return "<unknown event>:" + JSON.stringify(e);
 };
 
-export function formatPlayerActionText(game: StartedGame, player: GoatPlayer) {
+export function formatPlayerActionText(
+  game: GameInStartedState,
+  player: GoatPlayer
+) {
   const substate = game.substate;
   const activePlayer = game.players.find((p, i) => i === game.activePlayer)!;
 

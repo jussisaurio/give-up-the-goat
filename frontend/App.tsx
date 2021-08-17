@@ -348,16 +348,18 @@ const GameScreen = ({
                 : "colors" in card
                 ? card.colors
                 : [];
+
+            const disabled =
+              game.substate.state === "AWAITING_EVIDENCE_SWAP" &&
+              isMyTurn &&
+              iHaveCardOfOwnColor &&
+              !cardColors.includes(me.color) &&
+              card.type !== "joker";
             return (
               <PlayingCard
                 onClick={() => onOwnCardClick(game, me)}
-                disabled={
-                  game.substate.state === "AWAITING_EVIDENCE_SWAP" &&
-                  isMyTurn &&
-                  iHaveCardOfOwnColor &&
-                  !cardColors.includes(me.color) &&
-                  card.type !== "joker"
-                }
+                disabled={disabled}
+                selectable={isMyTurn && isChoosingCard(me, game) && !disabled}
                 key={card.id}
                 style={{ marginRight: "5px" }}
                 card={{ face: "UP", card }}
@@ -488,6 +490,10 @@ const GameScreen = ({
                       {l.stash.map((c, i) => (
                         <PlayingCard
                           onClick={() => onStashCardClick(game, me, i)}
+                          selectable={
+                            isMyTurn &&
+                            game.substate.state === "AWAITING_STASH_CHOOSE_CARD"
+                          }
                           key={c.id}
                           className="locationDealtCard stashCard"
                           card={{ face: "DOWN" }}

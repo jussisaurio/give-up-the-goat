@@ -1,6 +1,9 @@
-import { GoatPlayer, StartedGame } from "../common/game";
+import { GameInStartedState, GoatPlayer } from "../common/game";
 
-export const isChoosingCard = (player: GoatPlayer, game: StartedGame) => {
+export const isChoosingCard = (
+  player: GoatPlayer,
+  game: GameInStartedState
+) => {
   const substate = game.substate;
   if (substate.state === "AWAITING_TRADE_CHOOSE_CARDS") {
     const activePlayer = game.players.find((p, i) => i === game.activePlayer)!;
@@ -20,6 +23,14 @@ export const isChoosingCard = (player: GoatPlayer, game: StartedGame) => {
       return false;
     }
     return true;
+  } else if (
+    substate.state === "AWAITING_EVIDENCE_SWAP" ||
+    substate.state === "AWAITING_STASH_RETURN_CARD"
+  ) {
+    return (
+      game.state === "ONGOING" &&
+      player === game.players.find((p, i) => i === game.activePlayer)!
+    );
   }
 
   return false;
