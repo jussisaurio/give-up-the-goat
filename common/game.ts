@@ -468,14 +468,20 @@ export const createLocations = (
   ];
 };
 
+const STARTING_LOCATIONS_BY_PLAYER_COUNT: Record<number, LocationName[]> = {
+  3: ["PREPARE", "TRADE", "SPY"],
+  4: ["PREPARE", "TRADE", "SPY", "STASH"],
+  5: ["PREPARE", "PREPARE", "TRADE", "SPY", "STASH"],
+  6: ["PREPARE", "PREPARE", "TRADE", "TRADE", "SPY", "STASH"]
+};
+
 export const placePlayersInLocations = (
   players: DealtInGoatPlayer[],
   locations: LocationArea[]
 ): GoatPlayer[] => {
-  let currLoc = 0;
-  return players.map((pl) => ({
+  return players.map((pl, i) => ({
     ...pl,
-    location: locations[currLoc++ % locations.length].name
+    location: STARTING_LOCATIONS_BY_PLAYER_COUNT[players.length][i]
   }));
 };
 
