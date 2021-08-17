@@ -238,7 +238,8 @@ const GameScreen = ({
   }
 
   const classNameMe =
-    "playerInfo" + (me === playerWithTurn ? " turnAnimation" : "");
+    "playerInfo" +
+    (me === playerWithTurn || isChoosingCard(me, game) ? " turnAnimation" : "");
 
   const isMyTurn =
     game.players.findIndex((p) => p === me) === game.activePlayer;
@@ -359,11 +360,16 @@ const GameScreen = ({
               iHaveCardOfOwnColor &&
               !cardColors.includes(me.color) &&
               card.type !== "joker";
+
+            const selectable =
+              !disabled &&
+              isChoosingCard(me, game) &&
+              game.substate.state !== "AWAITING_STASH_CHOOSE_CARD";
             return (
               <PlayingCard
                 onClick={() => onOwnCardClick(game, me)}
                 disabled={disabled}
-                selectable={isMyTurn && isChoosingCard(me, game) && !disabled}
+                selectable={selectable}
                 key={card.id}
                 style={{ marginRight: "5px" }}
                 card={{ face: "UP", card }}
