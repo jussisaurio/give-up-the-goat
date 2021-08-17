@@ -19,6 +19,10 @@ import {
 import "./App.css";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { GameActionEvent, ServerEvent, StartedGame } from "../common/common";
+import { PlayingCard } from "./Card";
+import { TitleAndLogo } from "./TitleAndLogo";
+import { HomeScreen } from "./HomeScreen";
+import { WaitGameStartScreen } from "./WaitGameStartScreen";
 
 type UICard =
   | {
@@ -47,122 +51,6 @@ const PreparationToken = () => {
   return <div className="preparationToken">P</div>;
 };
 
-const CardComponent = ({
-  card,
-  className,
-  style,
-  disabled = false,
-  onClick
-}: {
-  card: UICard;
-  className?: string;
-  style?: any;
-  disabled?: boolean;
-  onClick: (...args: any) => void;
-}) => {
-  const classN = "card" + (className ? " " + className : "");
-
-  if (card.face === "DOWN") {
-    return (
-      <div
-        onClick={disabled ? noop : onClick}
-        className={classN}
-        style={{
-          ...(disabled && { opacity: "50%", cursor: "initial" }),
-          backgroundColor: "#654321",
-          ...style
-        }}
-      >
-        <span style={{ color: "white", fontSize: "2rem" }}>?</span>
-      </div>
-    );
-  }
-
-  if (card.card.type === "dual") {
-    const [firstColor, secondColor] = card.card.colors;
-    return (
-      <div
-        onClick={disabled ? noop : onClick}
-        className={classN}
-        style={{
-          ...(disabled && { opacity: "50%", cursor: "initial" }),
-          backgroundImage: `linear-gradient(115deg, ${firstColor} 50%, ${secondColor} 50%)`,
-          ...style
-        }}
-      >
-        <img
-          style={{ width: "75%", height: "auto" }}
-          src="/assets/Stylized-Goat-Line-Art.svg"
-        ></img>
-      </div>
-    );
-  } else if (card.card.type === "single") {
-    return (
-      <div
-        onClick={disabled ? noop : onClick}
-        className={classN}
-        style={{
-          ...(disabled && { opacity: "50%", cursor: "initial" }),
-          backgroundColor: card.card.color,
-          ...style
-        }}
-      >
-        <img
-          style={{ width: "75%", height: "auto" }}
-          src="/assets/Stylized-Goat-Line-Art.svg"
-        ></img>
-      </div>
-    );
-  } else if (card.card.type === "neutral") {
-    return (
-      <div
-        onClick={disabled ? noop : onClick}
-        className={classN}
-        style={{
-          ...(disabled && { opacity: "50%", cursor: "initial" }),
-          backgroundColor: "grey",
-          ...style
-        }}
-      >
-        <img
-          style={{ width: "75%", height: "auto" }}
-          src="/assets/Neutral.svg"
-        ></img>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      onClick={disabled ? noop : onClick}
-      className={classN}
-      style={{
-        ...(disabled && { opacity: "50%", cursor: "initial" }),
-        background: `linear-gradient(
-      90deg,
-      rgba(255, 0, 0, 1) 0%,
-      rgba(255, 154, 0, 1) 10%,
-      rgba(208, 222, 33, 1) 20%,
-      rgba(79, 220, 74, 1) 30%,
-      rgba(63, 218, 216, 1) 40%,
-      rgba(47, 201, 226, 1) 50%,
-      rgba(28, 127, 238, 1) 60%,
-      rgba(95, 21, 242, 1) 70%,
-      rgba(186, 12, 248, 1) 80%,
-      rgba(251, 7, 217, 1) 90%,
-      rgba(255, 0, 0, 1) 100%
-  )`,
-        ...style
-      }}
-    >
-      <img
-        style={{ width: "75%", height: "auto" }}
-        src="/assets/Stylized-Goat-Line-Art.svg"
-      ></img>
-    </div>
-  );
-};
-
 type GameScreenProps = {
   game: Game | null;
   onStartGame: (e: React.MouseEvent) => void;
@@ -182,52 +70,13 @@ const GameScreen = ({
 }: GameScreenProps) => {
   if (!game) return null;
 
-  const [copiedToClipboard, setCopiedToClipboard] = useState(false);
-
-  useEffect(() => {
-    setCopiedToClipboard(false);
-  }, [game.state]);
-
   if (game.state === "WAITING_FOR_PLAYERS") {
-    const playerCount = game.playerInfos.length;
     return (
-      <div className="fixedCenterContainer">
-        <TitleAndLogo />
-        <button
-          disabled={copiedToClipboard}
-          onClick={() => {
-            navigator.clipboard.writeText(window.location.href).then(() => {
-              setCopiedToClipboard(true);
-            });
-          }}
-        >
-          {copiedToClipboard ? "Link copied!" : "Copy game link to clipboard"}
-        </button>
-        <div>
-          This game is waiting to be started and has the following {playerCount}{" "}
-          players:
-        </div>
-        <ul>
-          {game.playerInfos.map((pi) => (
-            <div key={pi.id}>
-              <strong>
-                {pi.nickname}
-                {pi.nickname === nickname ? "(you)" : ""}
-              </strong>
-            </div>
-          ))}
-        </ul>
-        {playerCount < 3 ? (
-          <div>A minimum of 3 players required to start</div>
-        ) : (
-          <div>
-            <div>
-              You can either wait for more players to join or start the game
-            </div>
-            <button onClick={onStartGame}>Start game now</button>
-          </div>
-        )}
-      </div>
+      <WaitGameStartScreen
+        playerInfos={game.playerInfos}
+        nickname={nickname}
+        onStartGame={onStartGame}
+      />
     );
   }
 
@@ -364,7 +213,7 @@ const GameScreen = ({
           className="cardsContainer"
         >
           {cards.map((card) => (
-            <CardComponent
+            <PlayingCard
               onClick={noop}
               key={card.card.id}
               style={{ marginRight: "5px" }}
@@ -499,7 +348,7 @@ const GameScreen = ({
                 ? card.colors
                 : [];
             return (
-              <CardComponent
+              <PlayingCard
                 onClick={() => onOwnCardClick(game, me)}
                 disabled={
                   game.substate.state === "AWAITING_EVIDENCE_SWAP" &&
@@ -626,7 +475,7 @@ const GameScreen = ({
                 <div className="locationTitle">{l.userFacingName}</div>
                 <div className="locationContent">
                   {l.name !== "COPS" && (
-                    <CardComponent
+                    <PlayingCard
                       onClick={noop}
                       key={l.card.id}
                       className="locationDealtCard"
@@ -636,7 +485,7 @@ const GameScreen = ({
                   {l.name === "STASH" && (
                     <div className="stashContainer">
                       {l.stash.map((c, i) => (
-                        <CardComponent
+                        <PlayingCard
                           onClick={() => onStashCardClick(game, me, i)}
                           key={c.id}
                           className="locationDealtCard stashCard"
@@ -783,55 +632,6 @@ const GameScreen = ({
         </>
       )}
     </div>
-  );
-};
-
-type HomeProps = {
-  nickname: String;
-  socket: Socket;
-};
-
-const TitleAndLogo = () => (
-  <>
-    <img
-      style={{ width: "auto", height: "100px" }}
-      src="/assets/Stylized-Goat-Line-Art.svg"
-    ></img>
-    <h1>Give Up The Goat</h1>{" "}
-  </>
-);
-
-const Home = ({ nickname, socket }: HomeProps) => {
-  const onCreateGameClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    socket.emit("CLIENT_EVENT", { type: "GAME_CREATE", payload: { nickname } });
-  };
-  return (
-    <section className="fixedCenterContainer">
-      <TitleAndLogo />
-      <div className="lobbyDescription">
-        Give Up The Goat is a web-app implementation of the card game{" "}
-        <a href="http://indieboardsandcards.com/index.php/our-games/scape-goat/">
-          Scape Goat
-        </a>{" "}
-        by <a href="https://jonperry.com/scapegoat.html">Jon Perry</a>.{" "}
-        <a href="https://www.amazon.com/Indie-Boards-Cards-Scape-Goat/dp/B08K3SD91K">
-          Buy it here.
-        </a>{" "}
-        This game is an unofficial fan implementation that is not affiliated
-        with the game author(s) or the publisher.
-      </div>
-      {nickname && (
-        <div>
-          Your autogenerated nickname for this session is{" "}
-          <strong>{nickname}</strong>
-        </div>
-      )}
-      <button onClick={onCreateGameClick}>Create New Game</button>
-      <div>
-        If you want to join an existing game, get a link from your friend.
-      </div>
-    </section>
   );
 };
 
@@ -1118,7 +918,7 @@ const App = () => {
   return socket.connected ? (
     <Switch>
       <Route exact path="/">
-        <Home nickname={nickname} socket={socket} />
+        <HomeScreen nickname={nickname} socket={socket} />
       </Route>
       <Route path="/game">
         <GameScreen
