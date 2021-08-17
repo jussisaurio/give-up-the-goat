@@ -639,7 +639,8 @@ const SOUNDS = {
   FRAME_CHECK: new Audio("/assets/frame_check.wav"),
   FRAME_SUCCESS: new Audio("/assets/frame_success.wav"),
   FRAME_FAILURE: new Audio("/assets/frame_failure.wav"),
-  STEAL: new Audio("/assets/steal.wav")
+  STEAL: new Audio("/assets/steal.wav"),
+  TICK: new Audio("/assets/tick.wav")
 };
 
 const App = () => {
@@ -663,6 +664,8 @@ const App = () => {
     if (!game || !("events" in game) || game.events.length === 0) return;
 
     const lastEvent = game.events[game.events.length - 1];
+
+    SOUNDS.TICK.play();
 
     if (!("action" in lastEvent)) {
       switch (lastEvent.event) {
