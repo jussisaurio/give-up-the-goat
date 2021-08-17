@@ -1,4 +1,4 @@
 node_modules
 .DS_Store
-dist/assets/bundle.css
-dist/assets/bundle.js
+public/assets/bundle.css
+public/assets/bundle.js

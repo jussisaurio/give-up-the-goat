@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "typecheck": "tsc",
-    "build": "npm run typecheck && esbuild frontend.tsx --bundle --outfile=./dist/assets/bundle.js",
-    "start": "ts-node --project tsconfig.json server.ts",
-    "build-dev": "esbuild frontend.tsx --watch --bundle --outfile=./dist/assets/bundle.js"
+    "typecheck": "tsc --project tsconfig.json",
+    "build": "npm run typecheck && esbuild frontend/App.tsx --bundle --outfile=./public/assets/bundle.js",
+    "start": "ts-node --project tsconfig.json backend/server.ts",
+    "build-dev": "esbuild frontend/App.tsx --watch --bundle --outfile=./public/assets/bundle.js"
   },
   "author": "",
   "license": "ISC",

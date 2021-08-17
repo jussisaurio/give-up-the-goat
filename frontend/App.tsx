@@ -15,10 +15,10 @@ import {
   GameAction,
   GoatPlayer,
   PlayerColor
-} from "./game";
+} from "../common/game";
 import "./App.css";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import { GameActionEvent, ServerEvent, StartedGame } from "./common";
+import { GameActionEvent, ServerEvent, StartedGame } from "../common/common";
 
 type UICard =
   | {

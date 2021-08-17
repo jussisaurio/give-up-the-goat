@@ -3,16 +3,9 @@ import * as http from "http";
 import * as path from "path";
 import { Server } from "socket.io";
 import session from "express-session";
-import {
-  activateGame,
-  createGame,
-  DealtCard,
-  Game,
-  LocationArea,
-  playTurn
-} from "./game";
-import { createRandomNickname } from "./nicknameCreator";
-import { ClientEvent } from "./common";
+import { activateGame, createGame, Game, playTurn } from "../common/game";
+import { createRandomNickname } from "../common/nicknameCreator";
+import { ClientEvent } from "../common/common";
 import { IncomingMessage, NextFunction } from "connect";
 
 const app = express();
@@ -429,10 +422,13 @@ io.on("connection", (socket) => {
   });
 });
 
-app.use("/assets", express.static("dist/assets"));
+const assetsDIR = path.resolve(__dirname, "..", "public", "assets");
 
+app.use("/assets", express.static(assetsDIR));
+
+const indexHTML = path.resolve(__dirname, "..", "public", "index.html");
 app.get("*", (req, res) => {
-  res.sendFile(path.resolve(__dirname, "dist", "index.html"));
+  res.sendFile(indexHTML);
 });
 
 const PORT = Number.isInteger(Number(process.env.PORT))
