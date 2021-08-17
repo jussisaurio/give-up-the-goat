@@ -1,4 +1,4 @@
-import { GameInStartedState, GoatPlayer } from "../common/game";
+import { GameInStartedState, GoatPlayer } from "./game";
 
 export const isChoosingCard = (
   player: GoatPlayer,
@@ -34,4 +34,22 @@ export const isChoosingCard = (
   }
 
   return false;
+};
+
+export const playerCanGoToTheCops = (
+  player: GoatPlayer,
+  game: GameInStartedState
+) => {
+  if (game.state !== "ONGOING") return false;
+
+  const isMyTurn = game.players.indexOf(player) === game.activePlayer;
+
+  const iAmChoosingLocation =
+    isMyTurn && game.substate.state === "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION";
+  // Special rule in 6-player game where player can go to cops if the player 3 spots to their left is playing
+  const isSixPlayerGameAndTurnIsThreeToMyLeft =
+    game.players.length === 6 &&
+    (game.players.indexOf(player) + 3) % 6 === game.activePlayer;
+
+  return iAmChoosingLocation || isSixPlayerGameAndTurnIsThreeToMyLeft;
 };

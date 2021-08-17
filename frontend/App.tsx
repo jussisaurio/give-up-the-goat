@@ -29,7 +29,7 @@ import {
   formatPlayerActionText,
   mapPlayerColorToUIColor
 } from "./format";
-import { isChoosingCard } from "./logicHelpers";
+import { isChoosingCard, playerCanGoToTheCops } from "../common/logicHelpers";
 
 const noop = () => {};
 
@@ -258,6 +258,8 @@ const GameScreen = ({
   if (!myLocation) {
     throw Error("User is at nonexistent location " + me.location);
   }
+
+  const canGoToCops = playerCanGoToTheCops(me, game);
 
   return (
     <div
@@ -529,8 +531,8 @@ const GameScreen = ({
           })}
       </div>
       <div
-        onClick={isMyTurn ? onCopsClick : noop}
-        className={isMyTurn ? "cops" : "cops cops-disabled"}
+        onClick={canGoToCops ? onCopsClick : noop}
+        className={canGoToCops ? "cops" : "cops cops-disabled"}
       >
         GO TO THE COPS
       </div>

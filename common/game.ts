@@ -1,3 +1,4 @@
+import { playerCanGoToTheCops } from "./logicHelpers";
 import { getRandomElement } from "./toolbox";
 
 export const PLAYER_COLORS = [
@@ -567,6 +568,14 @@ export const playTurn = (
 
   const activePlayer = game.players.find((p, i) => game.activePlayer === i)!;
 
+  const player = game.players.find((p) => p.playerInfo.id === playerId);
+  const goingToCopsOutOfTurn =
+    player &&
+    player !== activePlayer &&
+    action.action === "GO_TO_LOCATION" &&
+    action.location === "COPS" &&
+    playerCanGoToTheCops(player, game);
+
   if (activePlayer.playerInfo.id !== playerId) {
     const isValidTradeParticipant =
       game.substate.state === "AWAITING_TRADE_CHOOSE_CARDS" &&
@@ -576,7 +585,11 @@ export const playTurn = (
     const isValidFrameParticipant =
       game.substate.state === "AWAITING_FRAME_CHOOSE_CARDS";
 
-    if (!isValidTradeParticipant && !isValidFrameParticipant) {
+    if (
+      !isValidTradeParticipant &&
+      !isValidFrameParticipant &&
+      !goingToCopsOutOfTurn
+    ) {
       console.error("Invalid action by " + playerId);
       console.error(JSON.stringify(action, null, 2));
       console.error(JSON.stringify(game, null, 2));
@@ -586,7 +599,10 @@ export const playTurn = (
 
   // MOVE TO LOCATION
   if (action.action === "GO_TO_LOCATION") {
-    if (game.substate.state !== "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION") {
+    if (
+      game.substate.state !== "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION" &&
+      !goingToCopsOutOfTurn
+    ) {
       console.error("Invalid action by " + playerId);
       console.error(JSON.stringify(action, null, 2));
       console.error(JSON.stringify(game, null, 2));

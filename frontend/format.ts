@@ -8,7 +8,7 @@ import {
   UserFacingGameEvent
 } from "../common/game";
 import { formatCardColor } from "../common/toolbox";
-import { isChoosingCard } from "./logicHelpers";
+import { isChoosingCard } from "../common/logicHelpers";
 
 export function formatNickname(p: GoatPlayer) {
   return `${p.playerInfo.nickname}(${p.color})`;
