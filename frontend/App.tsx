@@ -26,7 +26,8 @@ import { WaitGameStartScreen } from "./WaitGameStartScreen";
 import {
   formatLogEntry,
   formatNickname,
-  formatPlayerActionText
+  formatPlayerActionText,
+  mapPlayerColorToUIColor
 } from "./format";
 import { isChoosingCard } from "./logicHelpers";
 
@@ -35,7 +36,10 @@ const noop = () => {};
 type PlayerTokenProps = { backgroundColor: PlayerColor };
 const PlayerToken = ({ backgroundColor }: PlayerTokenProps) => {
   return (
-    <div style={{ backgroundColor }} className="playerToken">
+    <div
+      style={{ backgroundColor: mapPlayerColorToUIColor(backgroundColor) }}
+      className="playerToken"
+    >
       <img
         style={{ width: "75%", height: "auto" }}
         src="/assets/Stylized-Goat-Line-Art.svg"
@@ -195,7 +199,10 @@ const GameScreen = ({
         {(player === playerWithTurn || isTrading) && (
           <div className="loader"></div>
         )}
-        <div style={{ color: player.color }} className={classN}>
+        <div
+          style={{ color: mapPlayerColorToUIColor(player.color) }}
+          className={classN}
+        >
           {playerText}
         </div>
         <div
@@ -264,7 +271,10 @@ const GameScreen = ({
       className="container"
     >
       <div className="player-area player-self">
-        <div style={{ color: me.color }} className={classNameMe}>
+        <div
+          style={{ color: mapPlayerColorToUIColor(me.color) }}
+          className={classNameMe}
+        >
           {`You are ${formatNickname(me)}. `}
           {playerWithTurn === me ? "It's your turn! " : ""}
           {formatPlayerActionText(game, me)}
@@ -555,7 +565,11 @@ const GameScreen = ({
                     return (
                       <>
                         <span>The spidey senses of scapegoat </span>
-                        <span style={{ color: game.scapegoat }}>
+                        <span
+                          style={{
+                            color: mapPlayerColorToUIColor(game.scapegoat)
+                          }}
+                        >
                           {players[0].playerInfo.nickname}
                         </span>
                         <span>
@@ -575,7 +589,11 @@ const GameScreen = ({
                     return (
                       <>
                         <span>The unwarranted paranoia of</span>
-                        <span style={{ color: copCaller.color }}>
+                        <span
+                          style={{
+                            color: mapPlayerColorToUIColor(copCaller.color)
+                          }}
+                        >
                           {" "}
                           {copCaller.playerInfo.nickname}{" "}
                         </span>
@@ -583,7 +601,11 @@ const GameScreen = ({
                           caused them to run to the cops and ruin it for the
                           rest of them!
                         </span>
-                        <span style={{ color: game.scapegoat }}>
+                        <span
+                          style={{
+                            color: mapPlayerColorToUIColor(game.scapegoat)
+                          }}
+                        >
                           {" "}
                           {players[0].playerInfo.nickname} the scapegoat{" "}
                         </span>
@@ -599,12 +621,18 @@ const GameScreen = ({
                     <>
                       <span>Players </span>
                       {players.map((p) => (
-                        <span style={{ color: p.color }}>
+                        <span
+                          style={{ color: mapPlayerColorToUIColor(p.color) }}
+                        >
                           {p.playerInfo.nickname}{" "}
                         </span>
                       ))}
                       <span>have successfully framed the scapegoat: </span>
-                      <span style={{ color: game.scapegoat }}>
+                      <span
+                        style={{
+                          color: mapPlayerColorToUIColor(game.scapegoat)
+                        }}
+                      >
                         {
                           game.players.find((p) => p.color === game.scapegoat)!
                             .playerInfo.nickname

@@ -1,5 +1,6 @@
 import React from "react";
 import { Card } from "../common/game";
+import { mapPlayerColorToUIColor } from "./format";
 
 const noop = () => {};
 
@@ -44,17 +45,19 @@ export const PlayingCard = ({
         disabled={disabled}
         className={className}
         style={{
-          backgroundColor: "#654321",
+          backgroundColor: "#222",
           ...style
         }}
       >
-        <span style={{ color: "white", fontSize: "2rem" }}>?</span>
+        <span style={{ color: "white", fontSize: "1.2rem" }}>🔍</span>
       </BaseCard>
     );
   }
 
   if (card.card.type === "dual") {
-    const [firstColor, secondColor] = card.card.colors;
+    const [firstColor, secondColor] = card.card.colors.map(
+      mapPlayerColorToUIColor
+    );
     return (
       <BaseCard
         onClick={onClick}
@@ -78,7 +81,7 @@ export const PlayingCard = ({
         disabled={disabled}
         className={className}
         style={{
-          backgroundColor: card.card.color,
+          backgroundColor: mapPlayerColorToUIColor(card.card.color),
           ...style
         }}
       >

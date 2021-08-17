@@ -3,6 +3,7 @@ import {
   Game,
   GoatPlayer,
   LocationArea,
+  PlayerColor,
   StartedGame,
   UserFacingGameEvent
 } from "../common/game";
@@ -12,6 +13,10 @@ import { isChoosingCard } from "./logicHelpers";
 export function formatNickname(p: GoatPlayer) {
   return `${p.playerInfo.nickname}(${p.color})`;
 }
+
+export const mapPlayerColorToUIColor = (color: PlayerColor) => {
+  return color.toUpperCase() === "ORANGE" ? "chocolate" : color;
+};
 
 export const formatLogEntry = (e: UserFacingGameEvent, game: StartedGame) => {
   if ("event" in e) {

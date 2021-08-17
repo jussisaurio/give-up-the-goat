@@ -243,6 +243,7 @@ select {
   width: 6vh;
   height: 10vh;
   background-color: #654321;
+  margin: 1px;
 }
 
 .locationDealtCard {
@@ -303,8 +304,8 @@ select {
 }
 
 .stashCard {
-  width: 3vh;
-  height: 5vh;
+  width: 3.5vh;
+  height: 5.6vh;
 }
 
 .preparationToken {
