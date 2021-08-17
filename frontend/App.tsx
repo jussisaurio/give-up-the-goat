@@ -279,9 +279,8 @@ const GameScreen = ({
         >
           {`You are ${formatNickname(me)}. `}
           {playerWithTurn === me ? "It's your turn! " : ""}
-          {formatPlayerActionText(game, me)}
-          You suspect the scapegoat is {me.suspect}. You are at '
-          {myLocation.userFacingName}'.
+          {formatPlayerActionText(game, me)} You suspect the scapegoat is{" "}
+          {me.suspect}. You are at '{myLocation.userFacingName}'.
         </div>
         <div className="cardsContainer">
           {me.cards.map((card, i) => {

@@ -155,7 +155,7 @@ export function formatPlayerActionText(
     }
     case "AWAITING_STASH_CHOOSE_CARD": {
       if (player !== activePlayer) return "";
-      return "Choose a face-down card from Stash";
+      return "Choose a face-down card from Stash.";
     }
     case "AWAITING_STASH_RETURN_CARD": {
       if (player !== activePlayer) return "";
