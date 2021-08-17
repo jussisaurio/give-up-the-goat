@@ -102,7 +102,10 @@ const GameScreen = ({
   function renderPlayer(player: GoatPlayer, game: Game) {
     if (game.state === "WAITING_FOR_PLAYERS") return null;
     const classN =
-      "playerInfo" + (player === playerWithTurn ? " turnAnimation" : "");
+      "playerInfo" +
+      (player === playerWithTurn || isChoosingCard(player, game)
+        ? " turnAnimation"
+        : "");
 
     const playerText = `${formatNickname(player)} - ${formatPlayerActionText(
       game,
@@ -193,10 +196,10 @@ const GameScreen = ({
       });
     }
 
-    const isTrading = isChoosingCard(player, game);
+    const isChoosing = isChoosingCard(player, game);
     return (
       <>
-        {(player === playerWithTurn || isTrading) && (
+        {(player === playerWithTurn || isChoosing) && (
           <div className="loader"></div>
         )}
         <div
