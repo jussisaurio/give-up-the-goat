@@ -12,16 +12,20 @@ export const HomeScreen = ({ nickname, onCreateGameClick }: Props) => {
     <section className="fixedCenterContainer">
       <TitleAndLogo />
       <div className="lobbyDescription">
-        Give Up The Goat is a web-app implementation of the card game{" "}
-        <a href="http://indieboardsandcards.com/index.php/our-games/scape-goat/">
-          Scape Goat
-        </a>{" "}
-        by <a href="https://jonperry.com/scapegoat.html">Jon Perry</a>.{" "}
-        <a href="https://www.amazon.com/Indie-Boards-Cards-Scape-Goat/dp/B08K3SD91K">
-          Buy it here.
-        </a>{" "}
-        This game is an unofficial fan implementation that is not affiliated
-        with the game author(s) or the publisher.
+        <p>
+          Give Up The Goat is a web-app implementation of the card game{" "}
+          <a href="http://indieboardsandcards.com/index.php/our-games/scape-goat/">
+            Scape Goat
+          </a>{" "}
+          by <a href="https://jonperry.com/scapegoat.html">Jon Perry</a>.{" "}
+          <a href="https://www.amazon.com/Indie-Boards-Cards-Scape-Goat/dp/B08K3SD91K">
+            Buy it here.
+          </a>{" "}
+        </p>
+        <p>
+          This game is an unofficial fan implementation that is not affiliated
+          with the game author(s) or the publisher.
+        </p>
       </div>
       {nickname && (
         <div>
