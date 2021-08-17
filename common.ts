@@ -1,11 +1,13 @@
 import { Game, GameAction, DealtCard } from "./game";
 
-type StartedGame = Game & {
-  state:
-    | "ONGOING"
-    | "PAUSED_FOR_COPS_CHECK"
-    | "PAUSED_FOR_FRAME_CHECK"
-    | "FINISHED";
+export type StartedState =
+  | "ONGOING"
+  | "PAUSED_FOR_COPS_CHECK"
+  | "PAUSED_FOR_FRAME_CHECK"
+  | "FINISHED";
+
+export type StartedGame = Game & {
+  state: StartedState;
 };
 
 export type GameActionEvent =

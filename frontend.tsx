@@ -18,7 +18,7 @@ import {
 } from "./game";
 import "./App.css";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import { ClientEvent, GameActionEvent, ServerEvent } from "./common";
+import { GameActionEvent, ServerEvent, StartedGame } from "./common";
 
 type UICard =
   | {
@@ -233,6 +233,11 @@ const GameScreen = ({
 
   const playerCount = game.players.length;
   const me = game.players.find((p) => p.playerInfo.nickname === nickname);
+
+  if (!me) {
+    throw Error("Bug alert - user is not one of the players in the game");
+  }
+
   const meIndex = game.players.findIndex(
     (p) => p.playerInfo.nickname === nickname
   );
@@ -246,7 +251,7 @@ const GameScreen = ({
 
   const playerWithTurn = game.players.find((p, i) => i === game.activePlayer);
 
-  function renderPlayer(player: GoatPlayer) {
+  function renderPlayer(player: GoatPlayer, game: Game) {
     const classN =
       "playerInfo" + (player === playerWithTurn ? " turnAnimation" : "");
 
@@ -279,8 +284,11 @@ const GameScreen = ({
       });
     })();
 
-    function onOpponentHandClick() {
-      if (game.state !== "ONGOING") return;
+    function onOpponentHandClick(game: StartedGame) {
+      if (!me) {
+        console.warn("User is not one of the players in the game?");
+        return;
+      }
       if (
         game.substate.state !== "AWAITING_SPY_CHOOSE_PLAYER" &&
         game.substate.state !== "AWAITING_TRADE_CHOOSE_PLAYER" &&
@@ -349,7 +357,12 @@ const GameScreen = ({
         <div style={{ color: player.color }} className={classN}>
           {playerText}
         </div>
-        <div onClick={onOpponentHandClick} className="cardsContainer">
+        <div
+          onClick={() =>
+            game.state !== "WAITING_FOR_PLAYERS" && onOpponentHandClick(game)
+          }
+          className="cardsContainer"
+        >
           {cards.map((card) => (
             <CardComponent
               onClick={noop}
@@ -394,6 +407,12 @@ const GameScreen = ({
     });
   }
 
+  const myLocation = game.locations.find((l) => l.name === me.location);
+
+  if (!myLocation) {
+    throw Error("User is at nonexistent location " + me.location);
+  }
+
   return (
     <div
       style={{
@@ -413,11 +432,11 @@ const GameScreen = ({
             ? publicState.message + ". "
             : ""}
           You suspect the scapegoat is {me.suspect}. You are at '
-          {game.locations.find((l) => l.name === me.location).userFacingName}'.
+          {myLocation.userFacingName}'.
         </div>
         <div className="cardsContainer">
           {me.cards.map((card, i) => {
-            function onOwnCardClick() {
+            function onOwnCardClick(game: StartedGame, myself: GoatPlayer) {
               if (
                 game.state !== "ONGOING" ||
                 !(
@@ -433,7 +452,7 @@ const GameScreen = ({
               )!;
 
               if (game.substate.state === "AWAITING_EVIDENCE_SWAP") {
-                if (activePlayer.color !== me.color) return;
+                if (activePlayer.color !== myself.color) return;
                 return dispatch({
                   action: "SWAP_EVIDENCE",
                   playerCardIndex: i
@@ -442,7 +461,7 @@ const GameScreen = ({
                 game.substate.state === "AWAITING_TRADE_CHOOSE_CARDS"
               ) {
                 if (
-                  activePlayer.playerInfo.id === me.playerInfo.id &&
+                  activePlayer.playerInfo.id === myself.playerInfo.id &&
                   game.substate.mainPlayerCardIndex === null
                 ) {
                   dispatch({
@@ -450,7 +469,7 @@ const GameScreen = ({
                     playerCardIndex: i
                   });
                 } else if (
-                  game.substate.otherPlayerId === me.playerInfo.id &&
+                  game.substate.otherPlayerId === myself.playerInfo.id &&
                   game.substate.otherPlayerCardIndex === null
                 ) {
                   dispatch({
@@ -481,7 +500,7 @@ const GameScreen = ({
                 : [];
             return (
               <CardComponent
-                onClick={onOwnCardClick}
+                onClick={() => onOwnCardClick(game, me)}
                 disabled={
                   game.substate.state === "AWAITING_EVIDENCE_SWAP" &&
                   isMyTurn &&
@@ -509,40 +528,40 @@ const GameScreen = ({
       <div className="player-area player-2">
         {(() => {
           if (playerCount < 5) return "(empty seat)";
-          return renderPlayer(otherPlayersClockwiseFromMe[0]);
+          return renderPlayer(otherPlayersClockwiseFromMe[0], game);
         })()}
       </div>
       <div className="player-area player-3">
         {(() => {
           if (playerCount < 5)
-            return renderPlayer(otherPlayersClockwiseFromMe[0]);
-          return renderPlayer(otherPlayersClockwiseFromMe[1]);
+            return renderPlayer(otherPlayersClockwiseFromMe[0], game);
+          return renderPlayer(otherPlayersClockwiseFromMe[1], game);
         })()}
       </div>
       <div className="player-area player-4">
         {(() => {
           if (playerCount < 4) return "(empty seat)";
           if (playerCount === 4)
-            return renderPlayer(otherPlayersClockwiseFromMe[1]);
-          return renderPlayer(otherPlayersClockwiseFromMe[2]);
+            return renderPlayer(otherPlayersClockwiseFromMe[1], game);
+          return renderPlayer(otherPlayersClockwiseFromMe[2], game);
         })()}
       </div>
       <div className="player-area player-5">
         {(() => {
           if (playerCount === 3)
-            return renderPlayer(otherPlayersClockwiseFromMe[1]);
+            return renderPlayer(otherPlayersClockwiseFromMe[1], game);
           if (playerCount === 4)
-            return renderPlayer(otherPlayersClockwiseFromMe[2]);
+            return renderPlayer(otherPlayersClockwiseFromMe[2], game);
           if (playerCount === 5)
-            return renderPlayer(otherPlayersClockwiseFromMe[3]);
+            return renderPlayer(otherPlayersClockwiseFromMe[3], game);
           if (playerCount === 6)
-            return renderPlayer(otherPlayersClockwiseFromMe[3]);
+            return renderPlayer(otherPlayersClockwiseFromMe[3], game);
         })()}
       </div>
       <div className="player-area player-6">
         {(() => {
           if (playerCount < 6) return "(empty seat)";
-          return renderPlayer(otherPlayersClockwiseFromMe[4]);
+          return renderPlayer(otherPlayersClockwiseFromMe[4], game);
         })()}
       </div>
       <div className="common">
@@ -559,7 +578,7 @@ const GameScreen = ({
                 ? { opacity: "50%", cursor: "initial" }
                 : {};
 
-            function onLocationClick() {
+            function onLocationClick(game: Game, myself: GoatPlayer) {
               if (game.state !== "ONGOING") return;
               if (
                 game.substate.state !== "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION"
@@ -568,8 +587,8 @@ const GameScreen = ({
               const activePlayer = game.players.find(
                 (p, i) => i === game.activePlayer
               )!;
-              if (activePlayer.color !== me.color) return;
-              if (me.location === l.name) return;
+              if (activePlayer.color !== myself.color) return;
+              if (myself.location === l.name) return;
 
               dispatch({
                 action: "GO_TO_LOCATION",
@@ -577,7 +596,11 @@ const GameScreen = ({
               });
             }
 
-            function onStashCardClick(stashCardIndex: number) {
+            function onStashCardClick(
+              game: Game,
+              myself: GoatPlayer,
+              stashCardIndex: number
+            ) {
               if (
                 game.state !== "ONGOING" ||
                 game.substate.state !== "AWAITING_STASH_CHOOSE_CARD"
@@ -585,8 +608,8 @@ const GameScreen = ({
                 return;
               const activePlayer = game.players.find(
                 (p, i) => i === game.activePlayer
-              )!;
-              if (activePlayer.color !== me.color) return;
+              );
+              if (activePlayer?.color !== myself.color) return;
 
               dispatch({
                 action: "STASH_CHOOSE_CARD",
@@ -596,7 +619,7 @@ const GameScreen = ({
 
             return (
               <div
-                onClick={onLocationClick}
+                onClick={() => onLocationClick(game, me)}
                 style={style}
                 className="locationCard"
               >
@@ -614,7 +637,7 @@ const GameScreen = ({
                     <div className="stashContainer">
                       {l.stash.map((c, i) => (
                         <CardComponent
-                          onClick={() => onStashCardClick(i)}
+                          onClick={() => onStashCardClick(game, me, i)}
                           key={c.id}
                           className="locationDealtCard stashCard"
                           card={{ face: "DOWN" }}
@@ -744,7 +767,7 @@ const GameScreen = ({
                       <span>have successfully framed the scapegoat: </span>
                       <span style={{ color: game.scapegoat }}>
                         {
-                          game.players.find((p) => p.color === game.scapegoat)
+                          game.players.find((p) => p.color === game.scapegoat)!
                             .playerInfo.nickname
                         }
                       </span>
@@ -864,6 +887,10 @@ const App = () => {
       (p, i) => i === activeGame.activePlayer
     );
 
+    if (!activePlayer) {
+      throw Error("Bug alert - game doesnt have designated active player");
+    }
+
     switch (e.type) {
       case "PAUSED_FOR_COPS_CHECK": {
         setGame(e.game);
@@ -885,6 +912,9 @@ const App = () => {
         const location = activeGame.locations.find(
           (l) => l.name === activePlayer.location
         );
+        if (!location) {
+          throw Error("Bug alert - player is at nonexistent location");
+        }
         SOUNDS.FRAME_FAILURE.play();
         return setPublicState({
           type: e.type,
@@ -975,11 +1005,15 @@ const App = () => {
         });
       }
       case "SPY_HAND": {
+        const otherPlayer = activeGame.players.find(
+          (p) => p.playerInfo.id === e.otherPlayerId
+        );
+        if (!otherPlayer) {
+          throw Error("Bug alert - trying to spy on nonexistent player");
+        }
         return setSecretState({
           type: "SPY_HAND",
-          player: activeGame.players.find(
-            (p) => p.playerInfo.id === e.otherPlayerId
-          ),
+          player: otherPlayer,
           hand: e.hand
         });
       }
@@ -1004,6 +1038,9 @@ const App = () => {
         const location = activeGame.locations.find(
           (l) => l.name === activePlayer.location
         );
+        if (!location) {
+          throw Error("Bug alert - player is at nonexistent location");
+        }
         return setPublicState({
           type: e.type,
           players: [activePlayer],
@@ -1063,7 +1100,7 @@ const App = () => {
   };
 
   function dispatch(payload: GameAction) {
-    if (game.state !== "ONGOING") return;
+    if (game?.state !== "ONGOING") return;
     const codeFromURL = location.pathname.split("/").pop() ?? null;
     if (!codeFromURL) return;
 
