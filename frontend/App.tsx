@@ -19,23 +19,16 @@ import {
 } from "../common/game";
 import "./App.css";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import {
-  GameActionEvent,
-  GameActionEventWithCode,
-  ServerEvent
-} from "../common/eventTypes";
+import { GameActionEventWithCode, ServerEvent } from "../common/eventTypes";
 import { PlayingCard } from "./Card";
 import { HomeScreen } from "./HomeScreen";
 import { WaitGameStartScreen } from "./WaitGameStartScreen";
-
-type UICard =
-  | {
-      face: "DOWN";
-    }
-  | {
-      face: "UP";
-      card: Card;
-    };
+import {
+  formatLogEntry,
+  formatNickname,
+  formatPlayerActionText
+} from "./format";
+import { isChoosingCard } from "./logicHelpers";
 
 const noop = () => {};
 
@@ -59,7 +52,6 @@ type GameScreenProps = {
   game: Game | null;
   onStartGame: (e: React.MouseEvent) => void;
   nickname: string;
-  publicState: PublicState | null;
   secretState: SecretState | null;
   dispatch: (e: GameAction) => void;
 };
@@ -68,7 +60,6 @@ const GameScreen = ({
   game,
   onStartGame,
   nickname,
-  publicState,
   secretState,
   dispatch
 }: GameScreenProps) => {
@@ -105,19 +96,17 @@ const GameScreen = ({
   const playerWithTurn = game.players.find((p, i) => i === game.activePlayer);
 
   function renderPlayer(player: GoatPlayer, game: Game) {
+    if (game.state === "WAITING_FOR_PLAYERS") return null;
     const classN =
       "playerInfo" + (player === playerWithTurn ? " turnAnimation" : "");
 
-    const playerText = publicState?.players.includes(player)
-      ? `${player.playerInfo.nickname} ${publicState.message}`
-      : player.playerInfo.nickname;
+    const playerText = `${formatNickname(player)} - ${formatPlayerActionText(
+      game,
+      player
+    )}`;
 
     const cards = (() => {
-      if (!secretState) {
-        return player.cards.map((card) => ({ card, face: "DOWN" as const }));
-      }
-
-      if (secretState.type === "SPY_HAND") {
+      if (secretState?.type === "SPY_HAND") {
         return player === secretState.player
           ? secretState.hand.map((card) => ({ card, face: "UP" as const }))
           : player.cards.map((card) => ({ card, face: "DOWN" as const }));
@@ -125,7 +114,8 @@ const GameScreen = ({
 
       return player.cards.map((c, i) => {
         if (
-          secretState.frameCards.some(
+          game.state === "PAUSED_FOR_FRAME_CHECK" &&
+          game.frameCards.some(
             (fc) =>
               fc.playerId === player.playerInfo.id && fc.playerCardIndex === i
           )
@@ -199,9 +189,7 @@ const GameScreen = ({
       });
     }
 
-    const isTrading =
-      publicState?.type === "AWAITING_TRADE_CHOOSE_CARDS" &&
-      publicState.players.includes(player);
+    const isTrading = isChoosingCard(player, game);
     return (
       <>
         {(player === playerWithTurn || isTrading) && (
@@ -211,9 +199,7 @@ const GameScreen = ({
           {playerText}
         </div>
         <div
-          onClick={() =>
-            game.state !== "WAITING_FOR_PLAYERS" && onOpponentHandClick(game)
-          }
+          onClick={() => onOpponentHandClick(game)}
           className="cardsContainer"
         >
           {cards.map((card) => (
@@ -279,11 +265,9 @@ const GameScreen = ({
     >
       <div className="player-area player-self">
         <div style={{ color: me.color }} className={classNameMe}>
-          {`You are ${me.playerInfo.nickname}. `}
+          {`You are ${formatNickname(me)}. `}
           {playerWithTurn === me ? "It's your turn! " : ""}
-          {publicState && publicState.players.includes(me)
-            ? publicState.message + ". "
-            : ""}
+          {formatPlayerActionText(game, me)}
           You suspect the scapegoat is {me.suspect}. You are at '
           {myLocation.userFacingName}'.
         </div>
@@ -534,18 +518,17 @@ const GameScreen = ({
       >
         GO TO THE COPS
       </div>
-      {game.events.length > 0 && (
+      {
         <div className="gameLog">
-          {[...game.events]
-            .reverse()
-            .slice(0, 10)
+          {[...(game.events || [])]
+            .sort((a, b) => b.ts - a.ts)
             .map((e) => (
-              <div key={e} className="gameLogEntry">
-                {e}
+              <div key={e.ts} className="gameLogEntry">
+                {formatLogEntry(e, game)}
               </div>
             ))}
         </div>
-      )}
+      }
       {game.state === "FINISHED" && (
         <>
           <div className="finishedOverlay"></div>
@@ -642,22 +625,11 @@ const GameScreen = ({
   );
 };
 
-type PublicState = {
-  type: string;
-  players: GoatPlayer[];
-  message: string;
+type SecretState = {
+  type: "SPY_HAND";
+  player: GoatPlayer;
+  hand: DealtCard[];
 };
-
-type SecretState =
-  | {
-      type: "SPY_HAND";
-      player: GoatPlayer;
-      hand: DealtCard[];
-    }
-  | {
-      type: "FRAME_CHECK";
-      frameCards: { playerId: string; playerCardIndex: number }[];
-    };
 
 const SOUNDS = {
   COPS: new Audio("/assets/cops.wav"),
@@ -675,11 +647,113 @@ const App = () => {
   const location = useLocation();
   const [nickname, setNickname] = useState("");
   const [game, setGame] = useState<Game | null>(null);
-  const [publicState, setPublicState] = useState<PublicState | null>(null);
   const [secretState, setSecretState] = useState<SecretState | null>(null);
   const [socket, setSocket] = useState<
     Socket<DefaultEventsMap, DefaultEventsMap>
   >(io());
+
+  const lastEventTimestamp =
+    game && "events" in game && game.events.length > 0
+      ? game.events[game.events.length - 1].ts
+      : 0;
+
+  useEffect(() => {
+    if (lastEventTimestamp === 0) return;
+
+    if (!game || !("events" in game) || game.events.length === 0) return;
+
+    const lastEvent = game.events[game.events.length - 1];
+
+    if (!("action" in lastEvent)) {
+      switch (lastEvent.event) {
+        case "FRAME_FAILURE":
+          SOUNDS.FRAME_FAILURE.play();
+          return;
+        case "FRAME_SUCCESS":
+          SOUNDS.FRAME_SUCCESS.play();
+          return;
+      }
+      return;
+    }
+
+    switch (lastEvent.action) {
+      case "FRAME_CHOOSE_CARD": {
+        game.state !== "PAUSED_FOR_FRAME_CHECK" && SOUNDS.PAGE_FLIP.play();
+        return;
+      }
+      case "GO_TO_LOCATION": {
+        // play some sound
+        return;
+      }
+      case "SPY_ON_PLAYER": {
+        SOUNDS.CARD.play();
+        return;
+      }
+      case "SPY_ON_PLAYER_CONFIRM": {
+        SOUNDS.CARD.play();
+      }
+      case "STASH_CHOOSE_CARD": {
+        SOUNDS.PAGE_FLIP.play();
+        return;
+      }
+      case "STASH_RETURN_CARD": {
+        SOUNDS.PAGE_FLIP.play();
+        return;
+      }
+      case "STEAL_CHOOSE_PLAYER": {
+        SOUNDS.STEAL.play();
+      }
+      case "SWAP_EVIDENCE": {
+        SOUNDS.PAGE_FLIP.play();
+        return;
+      }
+      case "TRADE_CHOOSE_CARD": {
+        SOUNDS.PAGE_FLIP.play();
+        return;
+      }
+      case "TRADE_WITH_PLAYER": {
+        SOUNDS.GOAT.play();
+        return;
+      }
+    }
+  }, [lastEventTimestamp]);
+
+  useEffect(() => {
+    if (!game) return;
+
+    switch (game.state) {
+      case "PAUSED_FOR_FRAME_CHECK": {
+        SOUNDS.FRAME_CHECK.play();
+        return;
+      }
+      case "PAUSED_FOR_COPS_CHECK": {
+        SOUNDS.COPS.play();
+        return;
+      }
+      case "FINISHED": {
+        const activePlayer = game.players.find(
+          (p, i) => i === game.activePlayer
+        )!;
+        const scapegoat = game.players.find((p) => p.color === game.scapegoat)!;
+
+        const framed = activePlayer.location === "FRAME/STEAL";
+
+        if (framed) {
+          SOUNDS.FRAME_SUCCESS.play();
+        } else {
+          if (activePlayer === scapegoat) {
+            // Scapegoat correctly called cops
+            SOUNDS.STEAL.play();
+          } else {
+            // Someone else called cops
+            SOUNDS.GOAT.play();
+          }
+        }
+      }
+      default:
+        return;
+    }
+  }, [game?.state]);
 
   function handleGameActionEvent(e: GameActionEventWithCode) {
     const activeGame = e.game;
@@ -699,117 +773,16 @@ const App = () => {
     }
 
     switch (e.type) {
-      case "PAUSED_FOR_COPS_CHECK": {
-        setGame(e.game);
-        SOUNDS.COPS.play();
-        return;
-      }
-      case "PAUSED_FOR_FRAME_CHECK": {
-        setGame(e.game);
-        setSecretState({
-          type: "FRAME_CHECK",
-          frameCards: e.frameCards
-        });
-        SOUNDS.FRAME_CHECK.play();
-        return;
-      }
       case "FAILED_FRAME_ATTEMPT": {
         setGame(e.game);
-        setSecretState(null);
+        SOUNDS.FRAME_FAILURE.play();
         const location = activeGame.locations.find(
           (l) => l.name === activePlayer.location
         );
         if (!location) {
           throw Error("Bug alert - player is at nonexistent location");
         }
-        SOUNDS.FRAME_FAILURE.play();
-        return setPublicState({
-          type: e.type,
-          players: [activePlayer],
-          message: `choose card to swap with face up card at '${location.userFacingName}'`
-        });
-      }
-      case "GAME_FINISHED_COPS": {
-        setGame(e.game);
-        if (e.copCallerId === e.winnerPlayerIds[0]) {
-          SOUNDS.STEAL.play();
-        } else {
-          SOUNDS.GOAT.play();
-        }
-        return;
-      }
-      case "GAME_FINISHED_FRAME": {
-        setGame(e.game);
-        SOUNDS.FRAME_SUCCESS.play();
-        return;
-      }
-      case "AWAITING_FRAME_CHOOSE_CARDS": {
-        SOUNDS.PAGE_FLIP.play();
-        setGame(e.game);
-        setPublicState({
-          type: "AWAITING_FRAME_CHOOSE_CARDS",
-          players: e.game.players.filter(
-            (p) =>
-              e.game.substate.state === "AWAITING_FRAME_CHOOSE_CARDS" &&
-              e.game.substate.cards.every((c) => c.playerId !== p.playerInfo.id)
-          ),
-          message: "choose a card for Frame Attempt!"
-        });
-        return;
-      }
-      case "AWAITING_STEAL_CHOOSE_PLAYER": {
-        setGame(e.game);
-        SOUNDS.STEAL.play();
-        setPublicState({
-          type: "AWAITING_STEAL_CHOOSE_PLAYER",
-          players: [activePlayer],
-          message: "choose a player to Steal preparation token from"
-        });
-        return;
-      }
-      case "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION": {
-        SOUNDS.GOAT.play();
-        return setPublicState({
-          type: e.type,
-          players: [activePlayer],
-          message: "choose location"
-        });
-      }
-      case "AWAITING_TRADE_CHOOSE_PLAYER": {
-        return setPublicState({
-          type: e.type,
-          players: [activePlayer],
-          message: "choose player to trade with"
-        });
-      }
-      case "AWAITING_TRADE_CHOOSE_CARDS": {
-        SOUNDS.PAGE_FLIP.play();
-        const players = activeGame.players.filter((p) =>
-          e.waitingForPlayers.some((id) => p.playerInfo.id === id)
-        );
-        return setPublicState({
-          type: e.type,
-          players,
-          message: "choose card to trade"
-        });
-      }
-      case "AWAITING_SPY_CHOOSE_PLAYER": {
-        return setPublicState({
-          type: e.type,
-          players: [activePlayer],
-          message: "choose player whose hand to look at"
-        });
-      }
-      case "AWAITING_SPY_CONFIRM": {
-        SOUNDS.CARD.play();
-        const otherPlayer = activeGame.players.find(
-          (p) => p.playerInfo.id === e.otherPlayerId
-        )!.color;
-        return setPublicState({
-          type: e.type,
-          players: [activePlayer],
-          message: `Looking at ${otherPlayer}'s hand`
-        });
+        return setSecretState(null);
       }
       case "SPY_HAND": {
         const otherPlayer = activeGame.players.find(
@@ -824,41 +797,14 @@ const App = () => {
           hand: e.hand
         });
       }
-      case "AWAITING_STASH_CHOOSE_CARD": {
-        return setPublicState({
-          type: e.type,
-          players: [activePlayer],
-          message: "choose a card from stash"
-        });
-      }
-      case "AWAITING_STASH_RETURN_CARD": {
-        SOUNDS.CARD.play();
-        return setPublicState({
-          type: e.type,
-          players: [activePlayer],
-          message: `choose a card from hand to return to stash slot #${
-            e.stashCardIndex + 1
-          }`
-        });
-      }
-      case "AWAITING_EVIDENCE_SWAP": {
-        const location = activeGame.locations.find(
-          (l) => l.name === activePlayer.location
-        );
-        if (!location) {
-          throw Error("Bug alert - player is at nonexistent location");
-        }
-        return setPublicState({
-          type: e.type,
-          players: [activePlayer],
-          message: `choose card to swap with face up card at '${location.userFacingName}'`
-        });
+      default: {
+        setSecretState(null);
       }
     }
   }
 
   useEffect(() => {
-    socket.on("SERVER_EVENT", (msg: ServerEvent) => {
+    const eventListener = (msg: ServerEvent) => {
       const codeFromURL = location.pathname.split("/").pop() ?? null;
       if (msg.type === "ASSIGN_NICKNAME") {
         setNickname(msg.payload.nickname);
@@ -874,14 +820,23 @@ const App = () => {
         if (msg.payload.code !== codeFromURL) return;
         handleGameActionEvent(msg.payload);
       }
-    });
+    };
 
-    socket.on("SERVER_ERROR", (e: string) => {
+    const errorListener = (e: string) => {
       if (e === "GAME_DOESNT_EXIST") {
         history.push("/");
       }
-    });
-  }, [socket]);
+    };
+
+    socket.on("SERVER_EVENT", eventListener);
+
+    socket.on("SERVER_ERROR", errorListener);
+
+    return () => {
+      socket.off("SERVER_EVENT", eventListener);
+      socket.off("SERVER_ERROR", errorListener);
+    };
+  }, [socket, location]);
 
   useEffect(() => {
     const connectedAndGameURL =
@@ -937,7 +892,6 @@ const App = () => {
       </Route>
       <Route path="/game">
         <GameScreen
-          publicState={publicState}
           secretState={secretState}
           nickname={nickname}
           onStartGame={onStartGame}

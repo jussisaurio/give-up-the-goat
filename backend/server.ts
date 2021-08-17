@@ -137,11 +137,10 @@ io.on("connection", (socket) => {
         payload: { code, game: activatedGame }
       });
 
-      // Tell everyone that active player needs to choose location
       return broadcastGameEventToGame(code, {
         type: "GAME_ACTION_EVENT",
         payload: {
-          type: "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION",
+          type: "GAME_TICK",
           code,
           game: activatedGame
         }
@@ -163,28 +162,24 @@ io.on("connection", (socket) => {
 
       games[msg.code] = updatedGame;
 
+      broadcastGameEventToGame(msg.code, {
+        type: "GAME_ACTION_EVENT",
+        payload: {
+          type: "GAME_TICK",
+          code: msg.code,
+          game: updatedGame
+        }
+      });
+
       if (updatedGame.state !== "ONGOING") {
         if (updatedGame.state === "PAUSED_FOR_COPS_CHECK") {
-          broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "PAUSED_FOR_COPS_CHECK",
-              code: msg.code,
-              game: updatedGame
-            }
-          });
-
           setTimeout(() => {
             const finishedGame: Game = {
               ...updatedGame,
               state: "FINISHED",
               events: [
                 ...game.events,
-                `Player ${
-                  updatedGame.players.find(
-                    (p) => p.color === updatedGame.scapegoat
-                  )!.playerInfo.nickname
-                } has won the game after the cops were called!`
+                { event: "COPS_CALLED", ts: Date.now() }
               ],
               winnerPlayerIds: [
                 updatedGame.players.find(
@@ -194,15 +189,13 @@ io.on("connection", (socket) => {
             };
 
             games[msg.code] = finishedGame;
+
             broadcastGameEventToGame(msg.code, {
               type: "GAME_ACTION_EVENT",
               payload: {
-                type: "GAME_FINISHED_COPS",
+                type: "GAME_TICK",
                 code: msg.code,
-                game: finishedGame,
-                winnerPlayerIds: finishedGame.winnerPlayerIds,
-                copCallerId:
-                  finishedGame.players[finishedGame.activePlayer].playerInfo.id
+                game: finishedGame
               }
             });
           }, 3000);
@@ -211,16 +204,6 @@ io.on("connection", (socket) => {
           updatedGame.state === "PAUSED_FOR_FRAME_CHECK" &&
           updatedGame.substate.state === "AWAITING_FRAME_CHOOSE_CARDS"
         ) {
-          broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "PAUSED_FOR_FRAME_CHECK",
-              code: msg.code,
-              game: updatedGame,
-              frameCards: updatedGame.substate.cards
-            }
-          });
-
           const chosenCards = updatedGame.substate.cards.map(
             ({ playerId, playerCardIndex }) => {
               const player = updatedGame.players.find(
@@ -249,11 +232,7 @@ io.on("connection", (socket) => {
                 state: "FINISHED",
                 events: [
                   ...game.events,
-                  `The Scapegoat, ${
-                    updatedGame.players.find(
-                      (p) => p.color === updatedGame.scapegoat
-                    )!.playerInfo.nickname
-                  } , has been successfully framed and the other players win!`
+                  { event: "FRAME_SUCCESS", ts: Date.now() }
                 ],
                 winnerPlayerIds: updatedGame.players
                   .filter((p) => p.color !== updatedGame.scapegoat)
@@ -263,10 +242,9 @@ io.on("connection", (socket) => {
               broadcastGameEventToGame(msg.code, {
                 type: "GAME_ACTION_EVENT",
                 payload: {
-                  type: "GAME_FINISHED_FRAME",
+                  type: "GAME_TICK",
                   code: msg.code,
-                  game: finishedGame,
-                  winnerPlayerIds: finishedGame.winnerPlayerIds
+                  game: finishedGame
                 }
               });
             } else {
@@ -275,7 +253,7 @@ io.on("connection", (socket) => {
                 state: "ONGOING",
                 events: [
                   ...game.events,
-                  "The frame attempt fails due to insufficient evidence!"
+                  { event: "FRAME_FAILURE", ts: Date.now() }
                 ],
                 substate: {
                   state: "AWAITING_EVIDENCE_SWAP",
@@ -297,163 +275,22 @@ io.on("connection", (socket) => {
         }
       }
 
-      switch (updatedGame.substate.state) {
-        case "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION": {
-          // Tell everyone that active player needs to choose location
-          return broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION",
-              code: msg.code,
-              game: updatedGame
-            }
-          });
-        }
-        case "AWAITING_TRADE_CHOOSE_PLAYER": {
-          // Tell everyone that active player needs to choose player to trade with
-          return broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "AWAITING_TRADE_CHOOSE_PLAYER",
-              code: msg.code,
-              game: updatedGame
-            }
-          });
-        }
+      const substate = updatedGame.substate;
 
-        case "AWAITING_TRADE_CHOOSE_CARDS": {
-          // Tell everyone there are 1-2 players who need to choose a card now
-          const waitingMainPlayer =
-            updatedGame.substate.mainPlayerCardIndex === null;
-          const waitingOtherPlayer =
-            updatedGame.substate.otherPlayerCardIndex === null;
-          const activePlayerId = updatedGame.players.find(
-            (p, i) => i === updatedGame.activePlayer
-          )!.playerInfo.id;
-
-          return broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "AWAITING_TRADE_CHOOSE_CARDS",
-              code: msg.code,
-              waitingForPlayers: [
-                waitingMainPlayer && activePlayerId,
-                waitingOtherPlayer && updatedGame.substate.otherPlayerId
-              ].filter(Boolean) as string[],
-              game: updatedGame
-            }
-          });
-        }
-        case "AWAITING_SPY_CHOOSE_PLAYER": {
-          // Tell everyone that active player needs to choose a player to spy on
-          return broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "AWAITING_SPY_CHOOSE_PLAYER",
-              code: msg.code,
-              game: updatedGame
-            }
-          });
-        }
-        case "AWAITING_SPY_CONFIRM": {
-          // Tell everyone that active player is looking at another player's hand
-          // Privately send the other player's hand to the active player
-          const otherPlayerId = updatedGame.substate.otherPlayerId;
-          broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "AWAITING_SPY_CONFIRM",
-              code: msg.code,
-              otherPlayerId,
-              game: updatedGame
-            }
-          });
-
-          const otherPlayer = updatedGame.players.find(
-            (p) => p.playerInfo.id === otherPlayerId
-          )!;
-
-          socket.emit("SERVER_EVENT", {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "SPY_HAND",
-              code: msg.code,
-              otherPlayerId,
-              hand: otherPlayer.cards,
-              game: updatedGame
-            }
-          });
-          return;
-        }
-
-        case "AWAITING_STASH_CHOOSE_CARD": {
-          // Tell everyone that active player is looking at the stash
-          return broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "AWAITING_STASH_CHOOSE_CARD",
-              code: msg.code,
-              game: updatedGame
-            }
-          });
-        }
-        case "AWAITING_STASH_RETURN_CARD": {
-          // Tell everyone that active player is picking card from hand to return to stash
-          return broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "AWAITING_STASH_RETURN_CARD",
-              code: msg.code,
-              stashCardIndex: updatedGame.substate.stashCardIndex,
-              game: updatedGame
-            }
-          });
-        }
-        case "AWAITING_EVIDENCE_SWAP": {
-          // Tell everyone that active player is picking a card to trade with the public evidence @ location
-          broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "AWAITING_EVIDENCE_SWAP",
-              code: msg.code,
-              game: updatedGame
-            }
-          });
-          return;
-        }
-        case "AWAITING_STEAL_CHOOSE_PLAYER": {
-          // Tell everyone active player is choosing a player to steal preparation token from
-          broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "AWAITING_STEAL_CHOOSE_PLAYER",
-              code: msg.code,
-              game: updatedGame
-            }
-          });
-          return;
-        }
-        case "AWAITING_FRAME_CHOOSE_CARDS": {
-          // Tell everyone they need to pick a card for framing
-          const currentFrameCards = updatedGame.substate.cards;
-          broadcastGameEventToGame(msg.code, {
-            type: "GAME_ACTION_EVENT",
-            payload: {
-              type: "AWAITING_FRAME_CHOOSE_CARDS",
-              game: updatedGame,
-              code: msg.code,
-              waitingFor: updatedGame.players
-                .filter(
-                  (p) =>
-                    !currentFrameCards.some(
-                      (fc) => fc.playerId === p.playerInfo.id
-                    )
-                )
-                .map((p) => p.playerInfo.id)
-            }
-          });
-          return;
-        }
+      if (substate.state === "AWAITING_SPY_CONFIRM") {
+        const otherPlayer = updatedGame.players.find(
+          (p) => p.playerInfo.id === substate.otherPlayerId
+        )!;
+        emitEventToUser({
+          type: "GAME_ACTION_EVENT",
+          payload: {
+            type: "SPY_HAND",
+            code: msg.code,
+            otherPlayerId: substate.otherPlayerId,
+            hand: otherPlayer.cards,
+            game: updatedGame
+          }
+        });
       }
     }
   });
