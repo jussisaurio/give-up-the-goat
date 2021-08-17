@@ -860,7 +860,6 @@ const App = () => {
   useEffect(() => {
     socket.on("SERVER_EVENT", (msg: ServerEvent) => {
       const codeFromURL = location.pathname.split("/").pop() ?? null;
-      console.log({ codeFromURL, msg });
       if (msg.type === "ASSIGN_NICKNAME") {
         setNickname(msg.payload.nickname);
       } else if (msg.type === "GAME_CREATED") {
