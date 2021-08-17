@@ -1,89 +1,79 @@
-import { Game, GameAction, DealtCard } from "./game";
-
-export type StartedState =
-  | "ONGOING"
-  | "PAUSED_FOR_COPS_CHECK"
-  | "PAUSED_FOR_FRAME_CHECK"
-  | "FINISHED";
-
-export type StartedGame = Game & {
-  state: StartedState;
-};
+import { Game, GameAction, DealtCard, GameInStartedState } from "./game";
 
 export type GameActionEvent =
   | {
       type: "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION";
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "AWAITING_TRADE_CHOOSE_PLAYER";
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "AWAITING_TRADE_CHOOSE_CARDS";
       waitingForPlayers: string[];
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "AWAITING_SPY_CHOOSE_PLAYER";
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "AWAITING_SPY_CONFIRM";
       otherPlayerId: string;
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "SPY_HAND";
       otherPlayerId: string;
       hand: DealtCard[];
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "AWAITING_STASH_CHOOSE_CARD";
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "AWAITING_STASH_RETURN_CARD";
       stashCardIndex: number;
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "AWAITING_EVIDENCE_SWAP";
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "PAUSED_FOR_COPS_CHECK";
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "PAUSED_FOR_FRAME_CHECK";
       frameCards: { playerId: string; playerCardIndex: number }[];
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "AWAITING_FRAME_CHOOSE_CARDS";
-      game: StartedGame;
+      game: GameInStartedState;
       waitingFor: string[];
     }
   | {
       type: "AWAITING_STEAL_CHOOSE_PLAYER";
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "GAME_FINISHED_COPS";
       winnerPlayerIds: string[];
       copCallerId: string;
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "GAME_FINISHED_FRAME";
       winnerPlayerIds: string[];
-      game: StartedGame;
+      game: GameInStartedState;
     }
   | {
       type: "FAILED_FRAME_ATTEMPT";
-      game: StartedGame;
+      game: GameInStartedState;
     };
 
 export type ClientEvent =
@@ -105,10 +95,12 @@ export type ClientEvent =
       payload: GameAction;
     };
 
+export type GameActionEventWithCode = GameActionEvent & { code: string };
+
 export type ServerEvent =
   | {
       type: "GAME_JOINED";
-      payload: { game: Game; nickname: string };
+      payload: { game: Game; code: string; nickname: string };
     }
   | {
       type: "GAME_CREATED";
@@ -116,12 +108,12 @@ export type ServerEvent =
         code: string;
       };
     }
-  | { type: "GAME_STARTED"; payload: { game: Game } }
+  | { type: "GAME_STARTED"; payload: { code: string; game: Game } }
   | {
       type: "ASSIGN_NICKNAME";
       payload: { nickname: string };
     }
   | {
       type: "GAME_ACTION_EVENT";
-      payload: GameActionEvent;
+      payload: GameActionEventWithCode;
     };

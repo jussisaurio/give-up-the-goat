@@ -1,3 +1,5 @@
+import { getRandomElement } from "./toolbox";
+
 export const PLAYER_COLORS = [
   "BLUE",
   "RED",
@@ -315,7 +317,7 @@ export type SubState =
       state: "AWAITING_STEAL_CHOOSE_PLAYER";
     };
 
-type StartedGame = {
+export type StartedGame = {
   substate: SubState;
   id: string;
   activePlayer: number;
@@ -326,6 +328,14 @@ type StartedGame = {
   playerInfos: PlayerInfo[];
   events: string[];
 };
+
+export type StartedState =
+  | "ONGOING"
+  | "PAUSED_FOR_COPS_CHECK"
+  | "PAUSED_FOR_FRAME_CHECK"
+  | "FINISHED";
+
+export type GameInStartedState = Game & { state: StartedState };
 
 export type Game =
   | (StartedGame & {
@@ -344,9 +354,6 @@ export type Game =
       id: string;
       playerInfos: PlayerInfo[];
     };
-
-export const getRandomElement = <T>(arr: T[]) =>
-  arr[Math.floor(Math.random() * arr.length)];
 
 export const createInitialPlayers = (
   playerInfos: PlayerInfo[],
@@ -454,7 +461,7 @@ export const createGame = (): Game => {
   };
 };
 
-export const activateGame = (game: Game): Game => {
+export const activateGame = (game: Game): Game & { state: "ONGOING" } => {
   if (game.state !== "WAITING_FOR_PLAYERS") {
     throw Error(
       `Cannot activate game ${game.id} when its state is ${game.state}`

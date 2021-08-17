@@ -1,4 +1,4 @@
-import { getRandomElement } from "./game";
+import { getRandomElement } from "./toolbox";
 
 const ADVERBS = [
   "Very",

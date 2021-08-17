@@ -13,14 +13,18 @@ import {
   DealtCard,
   Game,
   GameAction,
+  GameInStartedState,
   GoatPlayer,
   PlayerColor
 } from "../common/game";
 import "./App.css";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import { GameActionEvent, ServerEvent, StartedGame } from "../common/common";
+import {
+  GameActionEvent,
+  GameActionEventWithCode,
+  ServerEvent
+} from "../common/eventTypes";
 import { PlayingCard } from "./Card";
-import { TitleAndLogo } from "./TitleAndLogo";
 import { HomeScreen } from "./HomeScreen";
 import { WaitGameStartScreen } from "./WaitGameStartScreen";
 
@@ -133,7 +137,7 @@ const GameScreen = ({
       });
     })();
 
-    function onOpponentHandClick(game: StartedGame) {
+    function onOpponentHandClick(game: GameInStartedState) {
       if (!me) {
         console.warn("User is not one of the players in the game?");
         return;
@@ -285,7 +289,10 @@ const GameScreen = ({
         </div>
         <div className="cardsContainer">
           {me.cards.map((card, i) => {
-            function onOwnCardClick(game: StartedGame, myself: GoatPlayer) {
+            function onOwnCardClick(
+              game: GameInStartedState,
+              myself: GoatPlayer
+            ) {
               if (
                 game.state !== "ONGOING" ||
                 !(
@@ -674,7 +681,7 @@ const App = () => {
     Socket<DefaultEventsMap, DefaultEventsMap>
   >(io());
 
-  function handleGameActionEvent(e: GameActionEvent) {
+  function handleGameActionEvent(e: GameActionEventWithCode) {
     const activeGame = e.game;
     if (!activeGame) {
       console.error("Got event for game not in progress....?");
@@ -852,6 +859,8 @@ const App = () => {
 
   useEffect(() => {
     socket.on("SERVER_EVENT", (msg: ServerEvent) => {
+      const codeFromURL = location.pathname.split("/").pop() ?? null;
+      console.log({ codeFromURL, msg });
       if (msg.type === "ASSIGN_NICKNAME") {
         setNickname(msg.payload.nickname);
       } else if (msg.type === "GAME_CREATED") {
@@ -860,8 +869,10 @@ const App = () => {
         const game = msg.payload.game;
         setGame(game);
       } else if (msg.type === "GAME_STARTED") {
+        if (msg.payload.code !== codeFromURL) return;
         setGame(msg.payload.game);
       } else if (msg.type === "GAME_ACTION_EVENT") {
+        if (msg.payload.code !== codeFromURL) return;
         handleGameActionEvent(msg.payload);
       }
     });
