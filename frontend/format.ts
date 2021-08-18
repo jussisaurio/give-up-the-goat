@@ -15,7 +15,7 @@ export function formatNickname(p: GoatPlayer) {
 }
 
 export const mapPlayerColorToUIColor = (color: PlayerColor) => {
-  return color.toUpperCase() === "ORANGE" ? "chocolate" : color;
+  return (color.toUpperCase() === "ORANGE" ? "chocolate" : color).toLowerCase();
 };
 
 export const formatLogEntry = (e: UserFacingGameEvent, game: StartedGame) => {

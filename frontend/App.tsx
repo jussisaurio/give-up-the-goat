@@ -15,7 +15,8 @@ import {
   GameAction,
   GameInStartedState,
   GoatPlayer,
-  PlayerColor
+  PlayerColor,
+  PlayerCount
 } from "../common/game";
 import "./App.css";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
@@ -32,6 +33,7 @@ import {
 import { isChoosingCard, playerCanGoToTheCops } from "../common/logicHelpers";
 import { EndGameScreenContent } from "./EndGameScreen";
 import { Go } from "./Go";
+import { getSeatingDesignation } from "./seating";
 
 const noop = () => {};
 
@@ -129,7 +131,15 @@ const GameScreen = ({
 
   const playerWithTurn = game.players.find((p, i) => i === game.activePlayer);
 
-  function renderPlayer(player: GoatPlayer, game: Game) {
+  function renderEmptyPlayer(playerNumber: number) {
+    return (
+      <div key={playerNumber} className={`player-area player-${playerNumber}`}>
+        <small style={{ color: "grey" }}>(empty seat)</small>
+      </div>
+    );
+  }
+
+  function renderPlayer(player: GoatPlayer, game: Game, playerNumber: number) {
     if (game.state === "WAITING_FOR_PLAYERS") return null;
     const classN =
       "playerInfo" +
@@ -227,8 +237,20 @@ const GameScreen = ({
     }
 
     const isChoosing = isChoosingCard(player, game);
+
+    const highlightCards =
+      (isMyTurn && game.substate.state === "AWAITING_SPY_CHOOSE_PLAYER") ||
+      game.substate.state === "AWAITING_STEAL_CHOOSE_PLAYER" ||
+      game.substate.state === "AWAITING_TRADE_CHOOSE_PLAYER";
+
     return (
-      <>
+      <div
+        key={playerNumber}
+        style={{
+          border: `2px solid ${mapPlayerColorToUIColor(player.color)}`
+        }}
+        className={`player-area player-${playerNumber}`}
+      >
         {(player === playerWithTurn || isChoosing) && (
           <div className="loader"></div>
         )}
@@ -244,6 +266,7 @@ const GameScreen = ({
         >
           {cards.map((card) => (
             <PlayingCard
+              className={highlightCards ? " highlightCard" : ""}
               onClick={noop}
               key={card.card.id}
               style={{ marginRight: "5px" }}
@@ -263,13 +286,9 @@ const GameScreen = ({
               })}
           </div>
         )}
-      </>
+      </div>
     );
   }
-
-  const classNameMe =
-    "playerInfo" +
-    (me === playerWithTurn || isChoosingCard(me, game) ? " turnAnimation" : "");
 
   const isMyTurn =
     game.players.findIndex((p) => p === me) === game.activePlayer;
@@ -293,7 +312,11 @@ const GameScreen = ({
     throw Error("User is at nonexistent location " + me.location);
   }
 
+  const requiresMyAction = me === playerWithTurn || isChoosingCard(me, game);
+
   const canGoToCops = playerCanGoToTheCops(me, game);
+
+  const classNameMyArea = "player-area player-self";
 
   return (
     <div
@@ -306,8 +329,13 @@ const GameScreen = ({
       }}
       className="container"
     >
-      <div className="player-area player-self">
-        <div className={classNameMe}>
+      <div
+        style={{
+          border: `2px solid ${mapPlayerColorToUIColor(me.color)}`
+        }}
+        className={classNameMyArea}
+      >
+        <div className="playerInfo">
           You are{" "}
           <span style={{ color: mapPlayerColorToUIColor(me.color) }}>
             {formatNickname(me)}
@@ -400,6 +428,7 @@ const GameScreen = ({
               game.substate.state !== "AWAITING_STASH_CHOOSE_CARD";
             return (
               <PlayingCard
+                className={selectable ? "highlightCard" : ""}
                 onClick={() => onOwnCardClick(game, me)}
                 disabled={disabled}
                 selectable={selectable}
@@ -420,45 +449,24 @@ const GameScreen = ({
           </div>
         )}
       </div>
-      <div className="player-area player-2">
-        {(() => {
-          if (playerCount < 5) return "(empty seat)";
-          return renderPlayer(otherPlayersClockwiseFromMe[0], game);
-        })()}
-      </div>
-      <div className="player-area player-3">
-        {(() => {
-          if (playerCount < 5)
-            return renderPlayer(otherPlayersClockwiseFromMe[0], game);
-          return renderPlayer(otherPlayersClockwiseFromMe[1], game);
-        })()}
-      </div>
-      <div className="player-area player-4">
-        {(() => {
-          if (playerCount < 4) return "(empty seat)";
-          if (playerCount === 4)
-            return renderPlayer(otherPlayersClockwiseFromMe[1], game);
-          return renderPlayer(otherPlayersClockwiseFromMe[2], game);
-        })()}
-      </div>
-      <div className="player-area player-5">
-        {(() => {
-          if (playerCount === 3)
-            return renderPlayer(otherPlayersClockwiseFromMe[1], game);
-          if (playerCount === 4)
-            return renderPlayer(otherPlayersClockwiseFromMe[2], game);
-          if (playerCount === 5)
-            return renderPlayer(otherPlayersClockwiseFromMe[3], game);
-          if (playerCount === 6)
-            return renderPlayer(otherPlayersClockwiseFromMe[3], game);
-        })()}
-      </div>
-      <div className="player-area player-6">
-        {(() => {
-          if (playerCount < 6) return "(empty seat)";
-          return renderPlayer(otherPlayersClockwiseFromMe[4], game);
-        })()}
-      </div>
+      {(() => {
+        const seatingDesignation = getSeatingDesignation(
+          game.players.length as PlayerCount
+        );
+        return [0, 1, 2, 3, 4].map((otherPlayerIndex) => {
+          const playerNumber = otherPlayerIndex + 2; // index 0 is player #2 etc -- hero is always player #1
+          const seat = seatingDesignation[otherPlayerIndex];
+          if (seat === "EMPTY") {
+            return renderEmptyPlayer(playerNumber);
+          } else {
+            return renderPlayer(
+              otherPlayersClockwiseFromMe[seat],
+              game,
+              playerNumber
+            );
+          }
+        });
+      })()}
       <div className="common">
         {game.locations
           .filter((l) => l.name !== "COPS")
@@ -466,12 +474,26 @@ const GameScreen = ({
             const myLocation = me.location === l.name;
             const myTurn =
               game.players.findIndex((p) => p === me) === game.activePlayer;
-            const style =
-              myLocation &&
-              myTurn &&
-              game.substate.state === "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION"
-                ? { opacity: "50%", cursor: "initial" }
-                : {};
+
+            const style = (() => {
+              if (
+                myLocation &&
+                myTurn &&
+                game.substate.state === "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION"
+              ) {
+                return {
+                  opacity: "50%",
+                  filter: "brightness(20%)",
+                  cursor: "initial"
+                };
+              }
+
+              if (myLocation && myTurn) {
+                return { filter: "brightness(150%)" };
+              }
+
+              return {};
+            })();
 
             function onLocationClick(game: Game, myself: GoatPlayer) {
               if (game.state !== "ONGOING") return;
@@ -512,12 +534,21 @@ const GameScreen = ({
               });
             }
 
+            const shouldHighlightLocation =
+              isMyTurn &&
+              game.substate.state === "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION" &&
+              l.name !== me.location;
+
+            const locationClassName =
+              "locationCard" +
+              (shouldHighlightLocation ? " highlightElement" : "");
+
             return (
               <div
                 onClick={() => onLocationClick(game, me)}
                 key={l.name}
                 style={style}
-                className="locationCard"
+                className={locationClassName}
               >
                 <div className="locationTitle">{l.userFacingName}</div>
                 <div className="locationContent">
@@ -529,22 +560,33 @@ const GameScreen = ({
                       card={{ face: "UP", card: l.card }}
                     />
                   )}
-                  {l.name === "STASH" && (
-                    <div className="stashContainer">
-                      {l.stash.map((c, i) => (
-                        <PlayingCard
-                          onClick={() => onStashCardClick(game, me, i)}
-                          selectable={
-                            isMyTurn &&
-                            game.substate.state === "AWAITING_STASH_CHOOSE_CARD"
-                          }
-                          key={c.id}
-                          className="locationDealtCard stashCard"
-                          card={{ face: "DOWN" }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  {l.name === "STASH" &&
+                    (() => {
+                      const selectable =
+                        isMyTurn &&
+                        game.substate.state === "AWAITING_STASH_CHOOSE_CARD";
+
+                      const stashCardClassName =
+                        "locationDealtCard stashCard" +
+                        (selectable ? " highlightCard" : "");
+                      return (
+                        <div className="stashContainer">
+                          {l.stash.map((c, i) => (
+                            <PlayingCard
+                              onClick={() => onStashCardClick(game, me, i)}
+                              selectable={
+                                isMyTurn &&
+                                game.substate.state ===
+                                  "AWAITING_STASH_CHOOSE_CARD"
+                              }
+                              key={c.id}
+                              className={stashCardClassName}
+                              card={{ face: "DOWN" }}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })()}
                   {game.players.filter((p) => p.location === l.name).length >
                     0 && (
                     <div className="playerTokenContainer">
