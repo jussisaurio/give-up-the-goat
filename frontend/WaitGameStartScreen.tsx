@@ -1,16 +1,19 @@
 import React, { useState } from "react";
 import { PlayerInfo } from "../common/game";
+import { NicknameEditor } from "./NicknameEditor";
 import { TitleAndLogo } from "./TitleAndLogo";
 
 type Props = {
   onStartGame: (...args: any[]) => void;
   nickname: string;
+  onChangeNickname: (n: string) => void;
   playerInfos: PlayerInfo[];
 };
 
 export const WaitGameStartScreen: React.FC<Props> = ({
   onStartGame,
   nickname,
+  onChangeNickname,
   playerInfos
 }) => {
   const [copiedToClipboard, setCopiedToClipboard] = useState(false);
@@ -44,6 +47,7 @@ export const WaitGameStartScreen: React.FC<Props> = ({
           </div>
         ))}
       </ul>
+      <NicknameEditor onSubmit={onChangeNickname} current={nickname} />
       {playerCount < 3 ? (
         <div>A minimum of 3 players required to start</div>
       ) : (

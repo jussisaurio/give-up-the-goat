@@ -20,6 +20,7 @@ export type GameActionEvent =
     };
 
 export type ClientEvent =
+  | { type: "CHANGE_NICKNAME"; nickname: string }
   | {
       type: "GAME_JOIN";
       payload: { code: string; nickname: string };

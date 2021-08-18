@@ -66,6 +66,7 @@ type GameScreenProps = {
   game: Game | null;
   onStartGame: (e: React.MouseEvent) => void;
   onRemake: (e: React.MouseEvent) => void;
+  onChangeNickname: (e: string) => void;
   nickname: string;
   secretState: SecretState | null;
   dispatch: (e: GameAction) => void;
@@ -75,6 +76,7 @@ const GameScreen = ({
   game,
   onStartGame,
   nickname,
+  onChangeNickname,
   secretState,
   onRemake,
   dispatch
@@ -100,6 +102,7 @@ const GameScreen = ({
     return (
       <WaitGameStartScreen
         playerInfos={game.playerInfos}
+        onChangeNickname={onChangeNickname}
         nickname={nickname}
         onStartGame={onStartGame}
       />
@@ -892,6 +895,10 @@ const App = () => {
     });
   }
 
+  const onChangeNickname = (nickname: string) => {
+    socket.emit("CLIENT_EVENT", { type: "CHANGE_NICKNAME", nickname });
+  };
+
   const onCreateGameClick = (e: React.MouseEvent) => {
     e.preventDefault();
     socket.emit("CLIENT_EVENT", { type: "GAME_CREATE", payload: { nickname } });
@@ -900,12 +907,17 @@ const App = () => {
   return socket.connected ? (
     <Switch>
       <Route exact path="/">
-        <HomeScreen nickname={nickname} onCreateGameClick={onCreateGameClick} />
+        <HomeScreen
+          onChangeNickname={onChangeNickname}
+          nickname={nickname}
+          onCreateGameClick={onCreateGameClick}
+        />
       </Route>
       <Route path="/game">
         <GameScreen
           secretState={secretState}
           nickname={nickname}
+          onChangeNickname={onChangeNickname}
           onStartGame={onStartGame}
           game={game}
           onRemake={onRemake}

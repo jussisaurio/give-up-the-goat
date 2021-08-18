@@ -7,7 +7,7 @@ import { activateGame, createGame, Game, playTurn } from "../common/game";
 import { createRandomNickname } from "../common/nicknameCreator";
 import { ClientEvent, ServerEvent } from "../common/eventTypes";
 import { IncomingMessage, NextFunction } from "connect";
-import { createGameCode } from "../common/toolbox";
+import { createGameCode, validateNickname } from "../common/toolbox";
 
 // SERVER INIT
 const app = express();
@@ -57,7 +57,36 @@ io.on("connection", (socket) => {
   }
 
   socket.on("CLIENT_EVENT", (msg: ClientEvent) => {
-    if (msg.type === "GAME_JOIN") {
+    if (msg.type === "CHANGE_NICKNAME") {
+      if (validateNickname(msg.nickname).ok) {
+        nicknames[uid] = msg.nickname;
+        Object.keys(games).forEach((code) => {
+          const game = games[code];
+          if (
+            game.state !== "WAITING_FOR_PLAYERS" ||
+            game.playerInfos.every((pi) => pi.id !== uid)
+          )
+            return;
+          game.playerInfos = game.playerInfos.map((pi) => {
+            if (pi.id !== uid) return pi;
+            return { id: pi.id, nickname: msg.nickname };
+          });
+          broadcastGameEventToGame(code, {
+            type: "GAME_JOINED",
+            payload: {
+              code,
+              game,
+              nickname: msg.nickname
+            }
+          });
+        });
+        socket.emit("SERVER_EVENT", {
+          type: "ASSIGN_NICKNAME",
+          payload: { nickname: msg.nickname }
+        });
+      }
+      return;
+    } else if (msg.type === "GAME_JOIN") {
       const game = games[msg.payload.code];
       if (!game) {
         return emitErrorToUser("GAME_DOESNT_EXIST");

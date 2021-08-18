@@ -297,6 +297,45 @@ button {
   align-items: center;
 }
 
+.nicknameEditor {
+  padding: 0.5rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  width: min(600px, 90vw);
+  border: 1px dashed black;
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  min-height: 8rem;
+}
+
+.nicknameEditorForm {
+  margin-top: 1rem;
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.nicknameEditorInput {
+  padding: 0.3rem;
+  flex: 3;
+}
+
+.nicknameEditorButton {
+  margin-left: 0.5rem;
+  flex: 1;
+}
+
+.validationError {
+  border: 1px dashed black;
+}
+
+.validationErrorReason {
+  color: red;
+}
+
 .stashContainer {
   display: flex;
   justify-content: center;

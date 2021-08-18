@@ -7,7 +7,7 @@ import {
   StartedGame,
   UserFacingGameEvent
 } from "../common/game";
-import { formatCardColor } from "../common/toolbox";
+import { formatCardColor, NicknameValidationResult } from "../common/toolbox";
 import { isChoosingCard } from "../common/logicHelpers";
 
 export function formatNickname(p: GoatPlayer) {
@@ -184,3 +184,16 @@ export function formatPlayerActionText(
     }
   }
 }
+
+export const formatNicknameValidationError = (
+  e: NicknameValidationResult & { ok: false }
+) => {
+  switch (e.reason) {
+    case "EMPTY":
+      return "";
+    case "TOO_SHORT":
+      return "Nickname must be at least 3 chars long";
+    case "INVALID_CHARACTERS":
+      return "Nickname contains invalid characters";
+  }
+};
