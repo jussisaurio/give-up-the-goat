@@ -7,7 +7,7 @@ import {
   StartedGame,
   UserFacingGameEvent
 } from "../common/game";
-import { formatCardColor, NicknameValidationResult } from "../common/toolbox";
+import { NicknameValidationResult } from "../common/toolbox";
 import { isChoosingCard } from "../common/logicHelpers";
 
 export function formatNickname(p: GoatPlayer) {
@@ -18,28 +18,71 @@ export const mapPlayerColorToUIColor = (color: PlayerColor) => {
   return (color.toUpperCase() === "ORANGE" ? "chocolate" : color).toLowerCase();
 };
 
-export const formatLogEntry = (e: UserFacingGameEvent, game: StartedGame) => {
+type LogChunk = { text: string; color?: string; bold?: boolean };
+
+const splitCardToChunks = (c: DealtCard) => {
+  switch (c.type) {
+    case "dual": {
+      return [
+        { text: c.colors[0], color: c.colors[0] },
+        { text: "/" },
+        { text: c.colors[1], color: c.colors[1] }
+      ];
+    }
+    case "joker": {
+      return [
+        "RED",
+        "ORANGE",
+        "YELLOW",
+        "GREEN",
+        "BLUE",
+        "INDIGO",
+        "VIOLET"
+      ].map((color) => ({ text: color[0], color }));
+    }
+    case "neutral": {
+      return [{ text: "GREY", color: "grey" }];
+    }
+    case "single": {
+      return [{ text: c.color, color: c.color }];
+    }
+  }
+};
+
+export const formatLogEntry = (
+  e: UserFacingGameEvent,
+  game: StartedGame
+): LogChunk[] => {
   if ("event" in e) {
     switch (e.event) {
-      case "COPS_CALLED":
+      case "COPS_CALLED": {
         const scapegoat = game.players.find((p) => p.color === game.scapegoat)!;
         const copCaller = game.players.find((p, i) => i === game.activePlayer)!;
         return scapegoat === copCaller
-          ? `The scapegoat ${formatNickname(
-              scapegoat
-            )} wins the game by calling the cops!`
-          : `${formatNickname(
-              copCaller
-            )} gets paranoid and calls the cops! The scapegoat ${formatNickname(
-              scapegoat
-            )} wins the game!`;
+          ? [
+              { text: "The scapegoat" },
+              { text: formatNickname(scapegoat), color: scapegoat.color },
+              { text: "wins the game by calling the cops!" }
+            ]
+          : [
+              { text: formatNickname(copCaller), color: copCaller.color },
+              { text: "gets paranoid and calls the cops! The scapegoat" },
+              { text: formatNickname(scapegoat), color: scapegoat.color },
+              { text: "wins the game!" }
+            ];
+      }
       case "FRAME_FAILURE":
-        return "The frame attempt fails due to insufficient evidence!";
-      case "FRAME_SUCCESS":
-        return `The Scapegoat, ${
-          game.players.find((p) => p.color === game.scapegoat)!.playerInfo
-            .nickname
-        } , has been successfully framed and the other players win!`;
+        return [
+          { text: "The frame attempt fails due to insufficient evidence!" }
+        ];
+      case "FRAME_SUCCESS": {
+        const scapegoat = game.players.find((p) => p.color === game.scapegoat)!;
+        return [
+          { text: "The scapegoat" },
+          { text: formatNickname(scapegoat), color: scapegoat.color },
+          { text: "has been successfully framed and the other players win!" }
+        ];
+      }
     }
   }
   const player = game.players.find((p) => p.playerInfo.id === e.actionPlayerId);
@@ -47,77 +90,102 @@ export const formatLogEntry = (e: UserFacingGameEvent, game: StartedGame) => {
     console.warn(
       "Cannot print log entry, player doesnt exist: " + e.actionPlayerId
     );
-    return "";
+    return [{ text: "" }];
   }
 
   switch (e.action) {
     case "FRAME_CHOOSE_CARD": {
-      return `${formatNickname(
-        player
-      )} has chosen a card for the Frame Attempt.`;
+      return [
+        { text: formatNickname(player), color: player.color },
+        { text: " has chosen a card for the Frame Attempt" }
+      ];
     }
     case "GO_TO_LOCATION": {
       const location = game.locations.find((l) => l.name === e.location);
       if (!location && e.location === "PREPARE") {
-        return `${formatNickname(
-          player
-        )} goes to location Prepare (Frame/Steal).`;
+        return [
+          { text: formatNickname(player), color: player.color },
+          { text: " goes to location Prepare to Frame (Frame/Steal)" }
+        ];
       } else if (!location) {
-        return ""; // bug
+        return [{ text: "" }]; // bug
       }
 
-      return `${formatNickname(player)} goes to location ${
-        location.userFacingName
-      }.`;
+      return [
+        { text: formatNickname(player), color: player.color },
+        { text: " goes to location " },
+        { text: location.userFacingName, bold: true }
+      ];
     }
     case "SPY_ON_PLAYER": {
       const otherPlayer = game.players.find((p) => p.color === e.playerColor)!;
-      return `${formatNickname(
-        player
-      )} is looking at the hand of ${formatNickname(otherPlayer)}`;
+      return [
+        { text: formatNickname(player), color: player.color },
+        { text: " is looking at the hand of " },
+        { text: formatNickname(otherPlayer), color: otherPlayer.color }
+      ];
     }
     case "SPY_ON_PLAYER_CONFIRM": {
-      return `${formatNickname(player)} has finished looking at the hand.`;
+      return [
+        { text: formatNickname(player), color: player.color },
+        { text: " has finished looking at the hand" }
+      ];
     }
     case "STASH_CHOOSE_CARD": {
-      return `${formatNickname(player)} takes the card at slot #${
-        e.stashCardIndex + 1
-      } from the Stash.`;
+      return [
+        { text: formatNickname(player), color: player.color },
+        { text: " takes the card at slot " },
+        { text: "#" + (e.stashCardIndex + 1) },
+        { text: " from the Stash" }
+      ];
     }
     case "STASH_RETURN_CARD": {
-      return `${formatNickname(
-        player
-      )} returns a card to the same slot in the Stash.`;
+      return [
+        { text: formatNickname(player), color: player.color },
+        { text: " returns a card to the same slot in the stash" }
+      ];
     }
     case "STEAL_CHOOSE_PLAYER": {
       const otherPlayer = game.players.find((p) => p.color === e.playerColor)!;
-      return `${formatNickname(
-        player
-      )} steals a preparation token from ${formatNickname(otherPlayer)}!`;
+      return [
+        { text: formatNickname(player), color: player.color },
+        { text: " steals a preparation token from " },
+        { text: formatNickname(otherPlayer), color: otherPlayer.color }
+      ];
     }
     case "SWAP_EVIDENCE": {
       const playerLocation = game.locations.find(
         (l) => l.name === player.location
       ) as LocationArea & { card: DealtCard };
 
-      return `${formatNickname(player)} takes the ${
-        "takenCard" in e ? formatCardColor(e.takenCard) : ""
-      } evidence card from ${
-        playerLocation.userFacingName
-      } and puts back a ${formatCardColor(playerLocation.card)} card.`;
+      return [
+        { text: formatNickname(player), color: player.color },
+        { text: " takes the " },
+        ...("takenCard" in e ? splitCardToChunks(e.takenCard) : [{ text: "" }]),
+        { text: " evidence card from " },
+        { text: playerLocation.userFacingName, bold: true },
+        { text: " and puts back a " },
+        ...splitCardToChunks(playerLocation.card),
+        { text: " card" }
+      ];
     }
     case "TRADE_CHOOSE_CARD": {
-      return `${formatNickname(player)} has chosen a card to trade.`;
+      return [
+        { text: formatNickname(player), color: player.color },
+        { text: " has chosen a card to trade" }
+      ];
     }
     case "TRADE_WITH_PLAYER": {
       const otherPlayer = game.players.find((p) => p.color === e.playerColor)!;
-      return `${formatNickname(player)} chooses to trade with ${formatNickname(
-        otherPlayer
-      )}!.`;
+      return [
+        { text: formatNickname(player), color: player.color },
+        { text: " chooses to trade with " },
+        { text: formatNickname(otherPlayer), color: otherPlayer.color }
+      ];
     }
   }
 
-  return "<unknown event>:" + JSON.stringify(e);
+  return [{ text: "" }];
 };
 
 export function formatPlayerActionText(

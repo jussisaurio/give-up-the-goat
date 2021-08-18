@@ -634,7 +634,18 @@ const GameScreen = ({
             .sort((a, b) => b.ts - a.ts)
             .map((e) => (
               <div key={e.ts} className="gameLogEntry">
-                {formatLogEntry(e, game)}
+                {formatLogEntry(e, game).map((entry) => (
+                  <span
+                    style={{
+                      fontWeight: entry.bold ? "600" : "initial",
+                      color: entry.color ?? "black",
+                      filter: "brightness(80%)"
+                    }}
+                  >
+                    {entry.text}
+                  </span>
+                ))}
+                .
               </div>
             ))}
         </div>
