@@ -476,10 +476,18 @@ const GameScreen = ({
               game.players.findIndex((p) => p === me) === game.activePlayer;
 
             const style = (() => {
-              if (
+              const choosingLocationDisableSameLocation =
                 myLocation &&
                 myTurn &&
-                game.substate.state === "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION"
+                game.substate.state === "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION";
+
+              const doingSomethingElseDisableOtherLocations =
+                myTurn &&
+                !myLocation &&
+                game.substate.state !== "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION";
+              if (
+                choosingLocationDisableSameLocation ||
+                doingSomethingElseDisableOtherLocations
               ) {
                 return {
                   opacity: "50%",

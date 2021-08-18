@@ -140,11 +140,14 @@ select {
 
 .highlightElement:hover {
   animation: none;
+  transform: scale(1.01);
+  border: 1px solid black;
 }
 
 @keyframes flash {
   50% {
     filter: brightness(150%);
+    transform: scale(1.01);
   }
 }
 
