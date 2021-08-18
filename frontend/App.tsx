@@ -239,9 +239,10 @@ const GameScreen = ({
     const isChoosing = isChoosingCard(player, game);
 
     const highlightCards =
-      (isMyTurn && game.substate.state === "AWAITING_SPY_CHOOSE_PLAYER") ||
-      game.substate.state === "AWAITING_STEAL_CHOOSE_PLAYER" ||
-      game.substate.state === "AWAITING_TRADE_CHOOSE_PLAYER";
+      isMyTurn &&
+      (game.substate.state === "AWAITING_SPY_CHOOSE_PLAYER" ||
+        game.substate.state === "AWAITING_STEAL_CHOOSE_PLAYER" ||
+        game.substate.state === "AWAITING_TRADE_CHOOSE_PLAYER");
 
     return (
       <div
