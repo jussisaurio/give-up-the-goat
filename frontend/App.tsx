@@ -30,6 +30,8 @@ import {
   mapPlayerColorToUIColor
 } from "./format";
 import { isChoosingCard, playerCanGoToTheCops } from "../common/logicHelpers";
+import { EndGameScreenContent } from "./EndGameScreen";
+import { Go } from "./Go";
 
 const noop = () => {};
 
@@ -48,6 +50,14 @@ const PlayerToken = ({ backgroundColor }: PlayerTokenProps) => {
   );
 };
 
+function usePrevious<T>(value: T): T | undefined {
+  const ref = React.useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+}
+
 const PreparationToken = () => {
   return <div className="preparationToken">P</div>;
 };
@@ -55,6 +65,7 @@ const PreparationToken = () => {
 type GameScreenProps = {
   game: Game | null;
   onStartGame: (e: React.MouseEvent) => void;
+  onRemake: (e: React.MouseEvent) => void;
   nickname: string;
   secretState: SecretState | null;
   dispatch: (e: GameAction) => void;
@@ -65,8 +76,24 @@ const GameScreen = ({
   onStartGame,
   nickname,
   secretState,
+  onRemake,
   dispatch
 }: GameScreenProps) => {
+  const prevGame = usePrevious(game);
+  const [startOverlay, setStartOverlay] = useState(false);
+  useEffect(() => {
+    if (
+      (prevGame?.state === "FINISHED" ||
+        prevGame?.state === "WAITING_FOR_PLAYERS") &&
+      game?.state === "ONGOING"
+    ) {
+      setStartOverlay(true);
+      setTimeout(() => {
+        setStartOverlay(false);
+      }, 4000);
+    }
+  }, [game, prevGame]);
+
   if (!game) return null;
 
   if (game.state === "WAITING_FOR_PLAYERS") {
@@ -277,14 +304,17 @@ const GameScreen = ({
       className="container"
     >
       <div className="player-area player-self">
-        <div
-          style={{ color: mapPlayerColorToUIColor(me.color) }}
-          className={classNameMe}
-        >
-          {`You are ${formatNickname(me)}. `}
-          {playerWithTurn === me ? "It's your turn! " : ""}
+        <div className={classNameMe}>
+          You are{" "}
+          <span style={{ color: mapPlayerColorToUIColor(me.color) }}>
+            {formatNickname(me)}
+          </span>
+          . {playerWithTurn === me ? "It's your turn! " : ""}
           {formatPlayerActionText(game, me)} You suspect the scapegoat is{" "}
-          {me.suspect}. You are at '{myLocation.userFacingName}'.
+          <span style={{ color: mapPlayerColorToUIColor(me.suspect) }}>
+            {me.suspect}
+          </span>
+          .
         </div>
         <div className="cardsContainer">
           {me.cards.map((card, i) => {
@@ -555,9 +585,9 @@ const GameScreen = ({
             ))}
         </div>
       }
-      {game.state === "FINISHED" && (
+      {(game.state === "FINISHED" || startOverlay) && (
         <>
-          <div className="finishedOverlay"></div>
+          <div className="darkOverlay"></div>
           <div className="finishedContent">
             <div
               style={{
@@ -569,98 +599,11 @@ const GameScreen = ({
                 height: "100vh"
               }}
             >
-              {(() => {
-                const players = game.winnerPlayerIds.map(
-                  (id) => game.players.find((p) => p.playerInfo.id === id)!
-                );
-                if (players.length === 1) {
-                  if (
-                    game.players.findIndex((p) => p === players[0]) ===
-                    game.activePlayer
-                  ) {
-                    return (
-                      <>
-                        <span>The spidey senses of scapegoat </span>
-                        <span
-                          style={{
-                            color: mapPlayerColorToUIColor(game.scapegoat)
-                          }}
-                        >
-                          {players[0].playerInfo.nickname}
-                        </span>
-                        <span>
-                          {" "}
-                          correctly led them to run to the cops and win the
-                          game!
-                        </span>
-                        <button onClick={() => window.location.replace("/")}>
-                          Back to lobby
-                        </button>
-                      </>
-                    );
-                  } else {
-                    const copCaller = game.players.find(
-                      (p, i) => i === game.activePlayer
-                    )!;
-                    return (
-                      <>
-                        <span>The unwarranted paranoia of</span>
-                        <span
-                          style={{
-                            color: mapPlayerColorToUIColor(copCaller.color)
-                          }}
-                        >
-                          {" "}
-                          {copCaller.playerInfo.nickname}{" "}
-                        </span>
-                        <span>
-                          caused them to run to the cops and ruin it for the
-                          rest of them!
-                        </span>
-                        <span
-                          style={{
-                            color: mapPlayerColorToUIColor(game.scapegoat)
-                          }}
-                        >
-                          {" "}
-                          {players[0].playerInfo.nickname} the scapegoat{" "}
-                        </span>
-                        <span>wins the game!</span>
-                        <button onClick={() => window.location.replace("/")}>
-                          Back to lobby
-                        </button>
-                      </>
-                    );
-                  }
-                } else {
-                  return (
-                    <>
-                      <span>Players </span>
-                      {players.map((p) => (
-                        <span
-                          style={{ color: mapPlayerColorToUIColor(p.color) }}
-                        >
-                          {p.playerInfo.nickname}{" "}
-                        </span>
-                      ))}
-                      <span>have successfully framed the scapegoat: </span>
-                      <span
-                        style={{
-                          color: mapPlayerColorToUIColor(game.scapegoat)
-                        }}
-                      >
-                        {
-                          game.players.find((p) => p.color === game.scapegoat)!
-                            .playerInfo.nickname
-                        }
-                      </span>
-                      <button onClick={() => window.location.replace("/")}>
-                        Back to lobby
-                      </button>
-                    </>
-                  );
-                }
-              })()}
+              {game.state === "FINISHED" ? (
+                <EndGameScreenContent game={game} onRemake={onRemake} />
+              ) : (
+                <Go player={me} />
+              )}
             </div>
           </div>
         </>
@@ -861,8 +804,10 @@ const App = () => {
         const game = msg.payload.game;
         setGame(game);
       } else if (msg.type === "GAME_STARTED") {
+        SOUNDS.GOAT.play();
         if (msg.payload.code !== codeFromURL) return;
         setGame(msg.payload.game);
+        setSecretState(null);
       } else if (msg.type === "GAME_ACTION_EVENT") {
         if (msg.payload.code !== codeFromURL) return;
         handleGameActionEvent(msg.payload);
@@ -927,6 +872,18 @@ const App = () => {
     }
   }
 
+  function onRemake() {
+    if (game?.state !== "FINISHED") return;
+    const codeFromURL = location.pathname.split("/").pop() ?? null;
+    if (!codeFromURL) return;
+    socket.emit("CLIENT_EVENT", {
+      type: "GAME_REMAKE",
+      payload: {
+        code: codeFromURL
+      }
+    });
+  }
+
   const onCreateGameClick = (e: React.MouseEvent) => {
     e.preventDefault();
     socket.emit("CLIENT_EVENT", { type: "GAME_CREATE", payload: { nickname } });
@@ -943,6 +900,7 @@ const App = () => {
           nickname={nickname}
           onStartGame={onStartGame}
           game={game}
+          onRemake={onRemake}
           dispatch={dispatch}
         />
       </Route>

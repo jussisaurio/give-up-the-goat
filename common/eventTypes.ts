@@ -33,6 +33,10 @@ export type ClientEvent =
       payload: { code: string };
     }
   | {
+      type: "GAME_REMAKE";
+      payload: { code: string };
+    }
+  | {
       type: "GAME_ACTION";
       code: string;
       payload: GameAction;

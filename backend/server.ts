@@ -58,8 +58,6 @@ io.on("connection", (socket) => {
 
   socket.on("CLIENT_EVENT", (msg: ClientEvent) => {
     if (msg.type === "GAME_JOIN") {
-      // TODO sometimes player gets registered twice
-      // Check that can join game
       const game = games[msg.payload.code];
       if (!game) {
         return emitErrorToUser("GAME_DOESNT_EXIST");
@@ -144,6 +142,23 @@ io.on("connection", (socket) => {
           code,
           game: activatedGame
         }
+      });
+    } else if (msg.type === "GAME_REMAKE") {
+      const { code } = msg.payload;
+      const game = games[msg.payload.code];
+      if (!game) {
+        return emitErrorToUser("GAME_DOESNT_EXIST");
+      } else if (game.state !== "FINISHED") {
+        return emitErrorToUser("GAME_NOT_FINISHED");
+      } else if (!game.playerInfos.some((pi) => pi.id === uid)) {
+        return emitErrorToUser("USER_NOT_IN_GAME");
+      }
+
+      const newGame = activateGame(createGame(game.playerInfos));
+      games[msg.payload.code] = newGame;
+      broadcastGameEventToGame(code, {
+        type: "GAME_STARTED",
+        payload: { code, game: newGame }
       });
     } else if (msg.type === "GAME_ACTION") {
       const game = games[msg.code];

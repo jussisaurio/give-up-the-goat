@@ -486,11 +486,11 @@ export const placePlayersInLocations = (
   }));
 };
 
-export const createGame = (): Game => {
+export const createGame = (playerInfos: PlayerInfo[] = []): Game => {
   return {
     state: "WAITING_FOR_PLAYERS",
     id: Math.random().toString(36).slice(2),
-    playerInfos: []
+    playerInfos
   };
 };
 

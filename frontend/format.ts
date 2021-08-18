@@ -11,7 +11,7 @@ import { formatCardColor } from "../common/toolbox";
 import { isChoosingCard } from "../common/logicHelpers";
 
 export function formatNickname(p: GoatPlayer) {
-  return `${p.playerInfo.nickname}(${p.color})`;
+  return `${p.playerInfo.nickname} (${p.color})`;
 }
 
 export const mapPlayerColorToUIColor = (color: PlayerColor) => {
