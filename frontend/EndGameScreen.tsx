@@ -73,7 +73,10 @@ export const EndGameScreenContent = ({ game, onRemake }: Props) => {
       <>
         <span>Players </span>
         {players.map((p) => (
-          <span style={{ color: mapPlayerColorToUIColor(p.color) }}>
+          <span
+            key={p.color}
+            style={{ color: mapPlayerColorToUIColor(p.color) }}
+          >
             {p.playerInfo.nickname}{" "}
           </span>
         ))}

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "typecheck": "tsc --project tsconfig.json",
-    "build": "npm run typecheck && esbuild frontend/App.tsx --bundle --outfile=./public/assets/bundle.js",
+    "build": "NODE_ENV=production npm run typecheck && esbuild frontend/App.tsx --bundle --outfile=./public/assets/bundle.js",
     "start": "ts-node --project tsconfig.json backend/server.ts",
     "build-dev": "esbuild frontend/App.tsx --watch --bundle --outfile=./public/assets/bundle.js"
   },

@@ -512,6 +512,7 @@ const GameScreen = ({
             return (
               <div
                 onClick={() => onLocationClick(game, me)}
+                key={l.name}
                 style={style}
                 className="locationCard"
               >
@@ -619,15 +620,16 @@ type SecretState = {
 };
 
 const SOUNDS = {
-  COPS: new Audio("/assets/cops.wav"),
-  CARD: new Audio("/assets/card.wav"),
-  PAGE_FLIP: new Audio("/assets/page_flip.wav"),
-  GOAT: new Audio("/assets/goat.wav"),
-  FRAME_CHECK: new Audio("/assets/frame_check.wav"),
-  FRAME_SUCCESS: new Audio("/assets/frame_success.wav"),
-  FRAME_FAILURE: new Audio("/assets/frame_failure.wav"),
-  STEAL: new Audio("/assets/steal.wav"),
-  TICK: new Audio("/assets/tick.wav")
+  COPS: new Audio("/assets/cops.mp3"),
+  CARD: new Audio("/assets/card.mp3"),
+  PAGE_FLIP: new Audio("/assets/page_flip.mp3"),
+  GOAT: new Audio("/assets/goat.mp3"),
+  FRAME_ATTEMPT: new Audio("/assets/frame_attempt.mp3"),
+  FRAME_CHECK: new Audio("/assets/frame_check.mp3"),
+  FRAME_SUCCESS: new Audio("/assets/frame_success.mp3"),
+  FRAME_FAILURE: new Audio("/assets/frame_failure.mp3"),
+  STEAL: new Audio("/assets/steal.mp3"),
+  TICK: new Audio("/assets/tick.mp3")
 };
 
 const App = () => {
@@ -652,15 +654,15 @@ const App = () => {
 
     const lastEvent = game.events[game.events.length - 1];
 
-    SOUNDS.TICK.play();
+    SOUNDS.TICK.play().catch(() => {});
 
     if (!("action" in lastEvent)) {
       switch (lastEvent.event) {
         case "FRAME_FAILURE":
-          SOUNDS.FRAME_FAILURE.play();
+          SOUNDS.FRAME_FAILURE.play().catch(() => {});
           return;
         case "FRAME_SUCCESS":
-          SOUNDS.FRAME_SUCCESS.play();
+          SOUNDS.FRAME_SUCCESS.play().catch(() => {});
           return;
       }
       return;
@@ -668,41 +670,47 @@ const App = () => {
 
     switch (lastEvent.action) {
       case "FRAME_CHOOSE_CARD": {
-        game.state !== "PAUSED_FOR_FRAME_CHECK" && SOUNDS.PAGE_FLIP.play();
+        game.state !== "PAUSED_FOR_FRAME_CHECK" &&
+          SOUNDS.PAGE_FLIP.play().catch(() => {});
         return;
       }
       case "GO_TO_LOCATION": {
-        // play some sound
+        if (
+          lastEvent.location === "FRAME/STEAL" &&
+          game.substate.state === "AWAITING_FRAME_CHOOSE_CARDS"
+        ) {
+          SOUNDS.FRAME_ATTEMPT.play().catch(() => {});
+        }
         return;
       }
       case "SPY_ON_PLAYER": {
-        SOUNDS.CARD.play();
+        SOUNDS.CARD.play().catch(() => {});
         return;
       }
       case "SPY_ON_PLAYER_CONFIRM": {
-        SOUNDS.CARD.play();
+        SOUNDS.CARD.play().catch(() => {});
       }
       case "STASH_CHOOSE_CARD": {
-        SOUNDS.PAGE_FLIP.play();
+        SOUNDS.PAGE_FLIP.play().catch(() => {});
         return;
       }
       case "STASH_RETURN_CARD": {
-        SOUNDS.PAGE_FLIP.play();
+        SOUNDS.PAGE_FLIP.play().catch(() => {});
         return;
       }
       case "STEAL_CHOOSE_PLAYER": {
-        SOUNDS.STEAL.play();
+        SOUNDS.STEAL.play().catch(() => {});
       }
       case "SWAP_EVIDENCE": {
-        SOUNDS.PAGE_FLIP.play();
+        SOUNDS.PAGE_FLIP.play().catch(() => {});
         return;
       }
       case "TRADE_CHOOSE_CARD": {
-        SOUNDS.PAGE_FLIP.play();
+        SOUNDS.PAGE_FLIP.play().catch(() => {});
         return;
       }
       case "TRADE_WITH_PLAYER": {
-        SOUNDS.GOAT.play();
+        SOUNDS.GOAT.play().catch(() => {});
         return;
       }
     }
@@ -713,11 +721,11 @@ const App = () => {
 
     switch (game.state) {
       case "PAUSED_FOR_FRAME_CHECK": {
-        SOUNDS.FRAME_CHECK.play();
+        SOUNDS.FRAME_CHECK.play().catch(() => {});
         return;
       }
       case "PAUSED_FOR_COPS_CHECK": {
-        SOUNDS.COPS.play();
+        SOUNDS.COPS.play().catch(() => {});
         return;
       }
       case "FINISHED": {
@@ -729,14 +737,14 @@ const App = () => {
         const framed = activePlayer.location === "FRAME/STEAL";
 
         if (framed) {
-          SOUNDS.FRAME_SUCCESS.play();
+          SOUNDS.FRAME_SUCCESS.play().catch(() => {});
         } else {
           if (activePlayer === scapegoat) {
             // Scapegoat correctly called cops
-            SOUNDS.STEAL.play();
+            SOUNDS.STEAL.play().catch(() => {});
           } else {
             // Someone else called cops
-            SOUNDS.GOAT.play();
+            SOUNDS.GOAT.play().catch(() => {});
           }
         }
       }
@@ -765,7 +773,7 @@ const App = () => {
     switch (e.type) {
       case "FAILED_FRAME_ATTEMPT": {
         setGame(e.game);
-        SOUNDS.FRAME_FAILURE.play();
+        SOUNDS.FRAME_FAILURE.play().catch(() => {});
         const location = activeGame.locations.find(
           (l) => l.name === activePlayer.location
         );
@@ -804,7 +812,7 @@ const App = () => {
         const game = msg.payload.game;
         setGame(game);
       } else if (msg.type === "GAME_STARTED") {
-        SOUNDS.GOAT.play();
+        SOUNDS.GOAT.play().catch(() => {});
         if (msg.payload.code !== codeFromURL) return;
         setGame(msg.payload.game);
         setSecretState(null);
