@@ -358,6 +358,7 @@ button {
   align-items: center;
   background-color: gold;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+  margin: 0.1rem;
 }
 
 .turnAnimation {
@@ -513,10 +514,23 @@ h1 {
     flex-direction: row;
     width: 100%;
     justify-content: center;
+    align-items: center;
   }
 
   .locationDealtCard {
     width: 2.5vh;
     height: 4vh;
+    margin: 0.3rem;
+  }
+
+  body {
+    font-size: 1.5vh;
+  }
+
+  .preparationTokenContainer {
+    display: flex;
+    width: unset;
+    justify-content: flex-start;
+    align-items: center;
   }
 }
