@@ -100,11 +100,11 @@ export const formatLogEntry = (e: UserFacingGameEvent, game: StartedGame) => {
         (l) => l.name === player.location
       ) as LocationArea & { card: DealtCard };
 
-      return `${formatNickname(player)} swaps out the ${
+      return `${formatNickname(player)} takes the ${
         "takenCard" in e ? formatCardColor(e.takenCard) : ""
-      } evidence card at ${
+      } evidence card from ${
         playerLocation.userFacingName
-      } for a ${formatCardColor(playerLocation.card)} card.`;
+      } and puts back a ${formatCardColor(playerLocation.card)} card.`;
     }
     case "TRADE_CHOOSE_CARD": {
       return `${formatNickname(player)} has chosen a card to trade.`;
