@@ -33,18 +33,18 @@ export const WaitGameStartScreen: React.FC<Props> = ({
       >
         {copiedToClipboard ? "Link copied!" : "Copy game link to clipboard"}
       </button>
-      <div>
+      <div className="waitListTitle">
         This game is waiting to be started and has the following {playerCount}{" "}
         players:
       </div>
-      <ul>
+      <ul className="waitList">
         {playerInfos.map((pi) => (
-          <div key={pi.id}>
-            <strong>
+          <li className="waitListPlayer" key={pi.id}>
+            <strong className="waitListNickname">
               {pi.nickname}
               {pi.nickname === nickname ? "(you)" : ""}
             </strong>
-          </div>
+          </li>
         ))}
       </ul>
       <NicknameEditor onSubmit={onChangeNickname} current={nickname} />

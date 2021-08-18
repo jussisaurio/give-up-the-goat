@@ -29,6 +29,23 @@ ol[role="list"] {
   list-style: none;
 }
 
+.waitListTitle {
+  margin-top: 0.5rem;
+  width: 100%;
+  text-align: center;
+}
+
+.waitList {
+  width: 100%;
+  text-align: left;
+  list-style: decimal;
+}
+
+.waitListNickname {
+  display: block;
+  width: 100%;
+}
+
 /* Set core root defaults */
 html:focus-within {
   scroll-behavior: smooth;
@@ -301,7 +318,7 @@ button {
   padding: 0.5rem;
   margin-top: 1rem;
   margin-bottom: 1rem;
-  width: min(600px, 90vw);
+  width: min(100%, 90vw);
   border: 1px dashed black;
   border-radius: 1rem;
   display: flex;
