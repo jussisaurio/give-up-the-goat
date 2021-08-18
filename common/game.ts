@@ -884,6 +884,7 @@ export const playTurn = (
         true,
         {
           ...game,
+          events: addEventToGameEvents(game.events, action, playerId),
           substate: {
             ...game.substate,
             mainPlayerCardIndex: activePlayerIndex,
@@ -904,6 +905,7 @@ export const playTurn = (
       true,
       {
         ...game,
+        events: addEventToGameEvents(game.events, action, playerId),
         substate: { state: "AWAITING_EVIDENCE_SWAP", location: "TRADE" },
         players: game.players.map((p) => {
           if (p === activePlayer) {
