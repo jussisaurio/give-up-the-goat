@@ -637,7 +637,7 @@ const GameScreen = ({
                 {formatLogEntry(e, game).map((entry) => (
                   <span
                     style={{
-                      fontWeight: entry.bold ? "600" : "initial",
+                      fontWeight: entry.bold ? "bold" : undefined,
                       color: entry.color ?? "black",
                       filter: "brightness(80%)"
                     }}
