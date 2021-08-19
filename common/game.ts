@@ -229,7 +229,10 @@ export type UserFacingGameEvent = { ts: number } & (
   | (EnrichedGameAction & {
       actionPlayerId: string;
     })
-  | { event: "FRAME_FAILURE" }
+  | {
+      event: "FRAME_FAILURE";
+      frameCards: { playerId: string; playerCardIndex: number }[];
+    }
   | { event: "FRAME_SUCCESS" }
   | { event: "COPS_CALLED" }
 );
@@ -1182,4 +1185,78 @@ export const playTurn = (
 
   // unexpected
   return logAndFail("Something unexpected happened");
+};
+
+type AfterCopsCheckCallback = (game: Game & { state: "FINISHED" }) => void;
+const COPS_CHECK_TIMEOUT = 3000;
+
+export const handleCopsCheck = (
+  game: Game & { state: "PAUSED_FOR_COPS_CHECK" },
+  callback: AfterCopsCheckCallback
+) => {
+  setTimeout(() => {
+    const finishedGame: Game = {
+      ...game,
+      state: "FINISHED",
+      events: [...game.events, { event: "COPS_CALLED", ts: Date.now() }],
+      winnerPlayerIds: [
+        game.players.find((p) => p.color === game.scapegoat)!.playerInfo.id
+      ]
+    };
+
+    return callback(finishedGame);
+  }, COPS_CHECK_TIMEOUT);
+};
+
+type FrameCallback = (game: Game & { state: "FINISHED" | "ONGOING" }) => void;
+const FRAME_CHECK_TIMEOUT = 6000;
+
+export const handleFrameCheck = (
+  game: Game & { state: "PAUSED_FOR_FRAME_CHECK" },
+  callback: FrameCallback
+) => {
+  const chosenCards = game.frameCards.map(({ playerId, playerCardIndex }) => {
+    const player = game.players.find((p) => p.playerInfo.id === playerId)!;
+    const card = player.cards[playerCardIndex];
+    return card;
+  });
+
+  const cardsWithScapegoatColor = chosenCards.filter((cc) => {
+    if ("color" in cc && cc.color === game.scapegoat) return true;
+    if ("colors" in cc && cc.colors.includes(game.scapegoat)) return true;
+    return cc.type === "joker";
+  });
+
+  const successfulFrame =
+    cardsWithScapegoatColor.length >= game.players.length - 1;
+
+  setTimeout(() => {
+    if (successfulFrame) {
+      return callback({
+        ...game,
+        state: "FINISHED",
+        events: [...game.events, { event: "FRAME_SUCCESS", ts: Date.now() }],
+        winnerPlayerIds: game.players
+          .filter((p) => p.color !== game.scapegoat)
+          .map((p) => p.playerInfo.id)
+      });
+    } else {
+      return callback({
+        ...game,
+        state: "ONGOING",
+        events: [
+          ...game.events,
+          {
+            event: "FRAME_FAILURE",
+            ts: Date.now(),
+            frameCards: game.frameCards
+          }
+        ],
+        substate: {
+          expectedAction: "SWAP_EVIDENCE",
+          location: "FRAME/STEAL"
+        }
+      });
+    }
+  }, FRAME_CHECK_TIMEOUT);
 };

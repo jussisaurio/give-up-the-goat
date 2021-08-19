@@ -12,11 +12,6 @@ export type GameActionEvent =
       game: GameInStartedState;
       otherPlayerId: string;
       hand: DealtCard[];
-    }
-  | {
-      type: "FAILED_FRAME_ATTEMPT";
-      code: string;
-      game: GameInStartedState;
     };
 
 export type ClientEvent =

@@ -823,17 +823,6 @@ const App = () => {
     }
 
     switch (e.type) {
-      case "FAILED_FRAME_ATTEMPT": {
-        setGame(e.game);
-        SOUNDS.FRAME_FAILURE.play().catch(() => {});
-        const location = activeGame.locations.find(
-          (l) => l.name === activePlayer.location
-        );
-        if (!location) {
-          throw Error("Bug alert - player is at nonexistent location");
-        }
-        return setSecretState(null);
-      }
       case "SPY_HAND": {
         const otherPlayer = activeGame.players.find(
           (p) => p.playerInfo.id === e.otherPlayerId
