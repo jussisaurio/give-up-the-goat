@@ -1,7 +1,7 @@
 import express from "express";
 import * as http from "http";
 import * as path from "path";
-import { Server, Socket } from "socket.io";
+import { RemoteSocket, Server, Socket } from "socket.io";
 import session from "express-session";
 import {
   activateGame,
@@ -16,6 +16,7 @@ import { createRandomNickname } from "../common/nicknameCreator";
 import { ClientEvent, ServerEvent } from "../common/eventTypes";
 import { IncomingMessage, NextFunction } from "connect";
 import { createGameCode, validateNickname } from "../common/toolbox";
+import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
 // SERVER INIT
 const app = express();
@@ -39,51 +40,43 @@ io.use((socket, next) => {
 // IN MEMORY STATE
 const games: Record<string, Game<"SERVER">> = {};
 const nicknames: Record<string, string> = {};
-const sessionToSockets: Record<string, Set<Socket>> = {};
+// I dunno why the fuck the sockets dont get disconnected, shooting at the wall with different things now...
+const socketToSession: WeakMap<
+  Socket | RemoteSocket<DefaultEventsMap>,
+  string
+> = new WeakMap();
 
-function addSocketToSession(sid: string, socket: Socket) {
-  // I dunno why the fuck the sockets dont get disconnected, so lets just bulldoze them so theres only one per session
-  sessionToSockets[sid] = new Set();
-
-  sessionToSockets[sid].add(socket);
-}
-
-function removeSocketFromSession(sid: string, socket: Socket) {
-  console.log("Removing from " + sid);
-  if (!sessionToSockets[sid]) {
-    sessionToSockets[sid] = new Set();
-  }
-
-  sessionToSockets[sid].delete(socket);
-
-  if (sessionToSockets[sid].size === 0) {
-    delete sessionToSockets[sid];
-  }
-}
-
-function getSocketsBySession(sid: string): Set<Socket> {
-  return sessionToSockets[sid] ?? new Set();
+function addSocketToSession(
+  sid: string,
+  socket: Socket | RemoteSocket<DefaultEventsMap>
+) {
+  socketToSession.set(socket, sid);
 }
 
 function sendStrippedGameStateToEveryPlayerInGame(code: string) {
-  const game = games[code];
-  if (!game) {
-    return;
-  }
-  for (const player of game.playerInfos) {
-    const strippedState = stripSecretInfoFromGame(player.id, game);
-    const sockets = getSocketsBySession(player.id);
-    sockets.forEach((s) => {
-      s.emit("SERVER_EVENT", {
-        type: "GAME_ACTION_EVENT",
-        payload: {
-          type: "GAME_TICK",
-          code,
-          game: strippedState
-        }
-      });
-    });
-  }
+  void io
+    .in(code)
+    .fetchSockets()
+    .then((sockets) => {
+      const game = games[code];
+      if (!game) {
+        return;
+      }
+      for (const s of sockets) {
+        const sid = socketToSession.get(s);
+        if (!sid || !game.playerInfos.some((pi) => pi.id === sid)) continue;
+        const strippedState = stripSecretInfoFromGame(sid, game);
+        s.emit("SERVER_EVENT", {
+          type: "GAME_ACTION_EVENT",
+          payload: {
+            type: "GAME_TICK",
+            code,
+            game: strippedState
+          }
+        });
+      }
+    })
+    .catch(() => {});
 }
 
 io.on("connection", (socket) => {
@@ -94,8 +87,9 @@ io.on("connection", (socket) => {
 
   addSocketToSession(uid, socket);
 
+  // For some reason this leaks and disconnect events dont fire
   socket.on("disconnect", (reason) => {
-    removeSocketFromSession(uid, socket);
+    console.log("Disconnecting socket id " + socket.id + " - " + reason);
   });
 
   nicknames[uid] = nicknames[uid] ?? createRandomNickname();
@@ -113,16 +107,6 @@ io.on("connection", (socket) => {
   }
 
   socket.on("CLIENT_EVENT", (msg: ClientEvent) => {
-    // For some reason this leaks and disconnect events dont fire
-    console.log(
-      "Number of sessions with connected sockets: ",
-      Object.keys(sessionToSockets).length
-    );
-    console.log(
-      "Number of connected sockets: ",
-      Object.values(sessionToSockets).reduce((a, b) => a + b.size, 0)
-    );
-
     if (msg.type === "CHANGE_NICKNAME") {
       if (validateNickname(msg.nickname).ok) {
         nicknames[uid] = msg.nickname;
@@ -151,6 +135,7 @@ io.on("connection", (socket) => {
         return emitErrorToUser("GAME_DOESNT_EXIST");
       } else if (game.playerInfos.some((pi) => pi.id === uid)) {
         // Already joined
+        socket.join(msg.payload.code);
         sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
         return;
       } else if (game.state !== "WAITING_FOR_PLAYERS") {
@@ -167,7 +152,7 @@ io.on("connection", (socket) => {
           { id: uid, nickname: msg.payload.nickname }
         ]
       };
-
+      socket.join(msg.payload.code);
       sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
     } else if (msg.type === "GAME_CREATE") {
       // Create code to be used in URL of game
