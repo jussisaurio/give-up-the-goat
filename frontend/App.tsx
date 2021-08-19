@@ -148,10 +148,8 @@ const GameScreen = ({
         ? " turnAnimation"
         : "");
 
-    const playerText = `${formatNickname(player)} - ${formatPlayerActionText(
-      game,
-      player
-    )}`;
+    const playerNameText = formatNickname(player);
+    const playerActionText = formatPlayerActionText(game, player);
 
     function onOpponentHandClick(game: GameInStartedState<"UI">) {
       if (!me) {
@@ -215,6 +213,8 @@ const GameScreen = ({
 
     const isChoosing = isChoosingCard(player, game);
 
+    const iThinkThisPlayerIsTheScapegoat = me.suspect === player.color;
+
     const highlightCards =
       isMyTurn &&
       (game.substate.expectedAction === "SPY_ON_PLAYER" ||
@@ -232,12 +232,35 @@ const GameScreen = ({
         {(player === playerWithTurn || isChoosing) && (
           <div className="loader"></div>
         )}
+        {iThinkThisPlayerIsTheScapegoat && (
+          <div
+            style={{
+              backgroundColor: mapPlayerColorToUIColor(player.color),
+              cursor: "pointer"
+            }}
+            title="I think this is the Scapegoat?"
+            onClick={() => SOUNDS.GOAT.play()}
+            className="scapegoatIcon"
+          >
+            <img
+              style={{ width: "75%", height: "auto" }}
+              src="/assets/Stylized-Goat-Line-Art.svg"
+            ></img>
+            ?
+          </div>
+        )}
         <div
           style={{ color: mapPlayerColorToUIColor(player.color) }}
           className={classN}
         >
-          {playerText}
+          {playerNameText}
         </div>
+        <div>{playerActionText}</div>
+        {iThinkThisPlayerIsTheScapegoat && (
+          <div className="scapegoatReassurance">
+            They're the scapegoat. Trust me.
+          </div>
+        )}
         <div
           onClick={() => onOpponentHandClick(game)}
           className="cardsContainer"
@@ -314,16 +337,10 @@ const GameScreen = ({
         className={classNameMyArea}
       >
         <div className="playerInfo">
-          You are{" "}
-          <span style={{ color: mapPlayerColorToUIColor(me.color) }}>
-            {formatNickname(me)}
-          </span>
-          . {playerWithTurn === me ? "It's your turn! " : ""}
-          {formatPlayerActionText(game, me)} You suspect the scapegoat is{" "}
-          <span style={{ color: mapPlayerColorToUIColor(me.suspect) }}>
-            {me.suspect}
-          </span>
-          .
+          <div style={{ color: mapPlayerColorToUIColor(me.color) }}>
+            You are {formatNickname(me)}
+          </div>
+          <div>{formatPlayerActionText(game, me)}</div>.
         </div>
         <div className="cardsContainer">
           {me.cards.map((card, i) => {
