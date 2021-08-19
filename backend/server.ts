@@ -42,14 +42,14 @@ const nicknames: Record<string, string> = {};
 const sessionToSockets: Record<string, Set<Socket>> = {};
 
 function addSocketToSession(sid: string, socket: Socket) {
-  if (!sessionToSockets[sid]) {
-    sessionToSockets[sid] = new Set();
-  }
+  // I dunno why the fuck the sockets dont get disconnected, so lets just bulldoze them so theres only one per session
+  sessionToSockets[sid] = new Set();
 
   sessionToSockets[sid].add(socket);
 }
 
 function removeSocketFromSession(sid: string, socket: Socket) {
+  console.log("Removing from " + sid);
   if (!sessionToSockets[sid]) {
     sessionToSockets[sid] = new Set();
   }
