@@ -703,9 +703,6 @@ const App = () => {
         case "FRAME_FAILURE":
           SOUNDS.FRAME_FAILURE.play().catch(() => {});
           return;
-        case "FRAME_SUCCESS":
-          SOUNDS.FRAME_SUCCESS.play().catch(() => {});
-          return;
       }
       return;
     }
@@ -762,6 +759,10 @@ const App = () => {
     if (!game) return;
 
     switch (game.state) {
+      case "ONGOING": {
+        SOUNDS.GOAT.play();
+        return;
+      }
       case "PAUSED_FOR_FRAME_CHECK": {
         SOUNDS.FRAME_CHECK.play().catch(() => {});
         return;
@@ -771,6 +772,7 @@ const App = () => {
         return;
       }
       case "FINISHED": {
+        const me = getMe(game);
         const activePlayer = getActivePlayer(game);
         const scapegoat = game.players.find((p) => p.color === game.scapegoat)!;
 
@@ -779,14 +781,15 @@ const App = () => {
         if (framed) {
           SOUNDS.FRAME_SUCCESS.play().catch(() => {});
         } else {
-          if (activePlayer === scapegoat) {
-            // Scapegoat correctly called cops
+          if (me === scapegoat) {
+            // I called the cops successfully
             SOUNDS.STEAL.play().catch(() => {});
           } else {
             // Someone else called cops
             SOUNDS.GOAT.play().catch(() => {});
           }
         }
+        return;
       }
       default:
         return;
