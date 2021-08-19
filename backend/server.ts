@@ -246,7 +246,7 @@ io.on("connection", (socket) => {
           return;
         } else if (
           updatedGame.state === "PAUSED_FOR_FRAME_CHECK" &&
-          updatedGame.substate.state === "AWAITING_FRAME_CHOOSE_CARDS"
+          updatedGame.substate.expectedAction === "FRAME_CHOOSE_CARD"
         ) {
           const chosenCards = updatedGame.substate.cards.map(
             ({ playerId, playerCardIndex }) => {
@@ -300,7 +300,7 @@ io.on("connection", (socket) => {
                   { event: "FRAME_FAILURE", ts: Date.now() }
                 ],
                 substate: {
-                  state: "AWAITING_EVIDENCE_SWAP",
+                  expectedAction: "SWAP_EVIDENCE",
                   location: "FRAME/STEAL"
                 }
               };
@@ -321,7 +321,7 @@ io.on("connection", (socket) => {
 
       const substate = updatedGame.substate;
 
-      if (substate.state === "AWAITING_SPY_CONFIRM") {
+      if (substate.expectedAction === "SPY_ON_PLAYER_CONFIRM") {
         const otherPlayer = updatedGame.players.find(
           (p) => p.playerInfo.id === substate.otherPlayerId
         )!;

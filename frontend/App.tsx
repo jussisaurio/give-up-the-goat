@@ -30,7 +30,11 @@ import {
   formatPlayerActionText,
   mapPlayerColorToUIColor
 } from "./format";
-import { isChoosingCard, playerCanGoToTheCops } from "../common/logicHelpers";
+import {
+  getActivePlayer,
+  isChoosingCard,
+  playerCanGoToTheCops
+} from "../common/logicHelpers";
 import { EndGameScreenContent } from "./EndGameScreen";
 import { Go } from "./Go";
 import { getSeatingDesignation } from "./seating";
@@ -180,28 +184,26 @@ const GameScreen = ({
         return;
       }
       if (
-        game.substate.state !== "AWAITING_SPY_CHOOSE_PLAYER" &&
-        game.substate.state !== "AWAITING_TRADE_CHOOSE_PLAYER" &&
-        game.substate.state !== "AWAITING_STEAL_CHOOSE_PLAYER"
+        game.substate.expectedAction !== "SPY_ON_PLAYER" &&
+        game.substate.expectedAction !== "TRADE_CHOOSE_PLAYER" &&
+        game.substate.expectedAction !== "STEAL_CHOOSE_PLAYER"
       )
         return;
-      const activePlayer = game.players.find(
-        (p, i) => i === game.activePlayer
-      )!;
+      const activePlayer = getActivePlayer(game);
       if (activePlayer.color !== me.color || player.color === me.color) return;
 
-      if (game.substate.state === "AWAITING_SPY_CHOOSE_PLAYER") {
+      if (game.substate.expectedAction === "SPY_ON_PLAYER") {
         dispatch({
           action: "SPY_ON_PLAYER",
           playerColor: player.color
         });
-      } else if (game.substate.state === "AWAITING_TRADE_CHOOSE_PLAYER") {
+      } else if (game.substate.expectedAction === "TRADE_CHOOSE_PLAYER") {
         dispatch({
-          action: "TRADE_WITH_PLAYER",
+          action: "TRADE_CHOOSE_PLAYER",
           playerColor: player.color
         });
       } else if (
-        game.substate.state === "AWAITING_STEAL_CHOOSE_PLAYER" &&
+        game.substate.expectedAction === "STEAL_CHOOSE_PLAYER" &&
         player.preparationTokens > 0
       ) {
         dispatch({
@@ -216,7 +218,7 @@ const GameScreen = ({
       game.players.find((p, i) => i === game.activePlayer)! === me;
     const spyingThisPlayer =
       game.state === "ONGOING" &&
-      game.substate.state === "AWAITING_SPY_CONFIRM" &&
+      game.substate.expectedAction === "SPY_ON_PLAYER_CONFIRM" &&
       isActivePlayer &&
       game.substate.otherPlayerId === player.playerInfo.id;
 
@@ -226,7 +228,7 @@ const GameScreen = ({
         game.players.find((p, i) => i === game.activePlayer)! === me;
       const spying =
         game.state === "ONGOING" &&
-        game.substate.state === "AWAITING_SPY_CONFIRM" &&
+        game.substate.expectedAction === "SPY_ON_PLAYER_CONFIRM" &&
         isActivePlayer;
 
       if (!spying) return;
@@ -240,9 +242,9 @@ const GameScreen = ({
 
     const highlightCards =
       isMyTurn &&
-      (game.substate.state === "AWAITING_SPY_CHOOSE_PLAYER" ||
-        game.substate.state === "AWAITING_STEAL_CHOOSE_PLAYER" ||
-        game.substate.state === "AWAITING_TRADE_CHOOSE_PLAYER");
+      (game.substate.expectedAction === "SPY_ON_PLAYER" ||
+        game.substate.expectedAction === "STEAL_CHOOSE_PLAYER" ||
+        game.substate.expectedAction === "TRADE_CHOOSE_PLAYER");
 
     return (
       <div
@@ -357,26 +359,22 @@ const GameScreen = ({
               if (
                 game.state !== "ONGOING" ||
                 !(
-                  game.substate.state === "AWAITING_EVIDENCE_SWAP" ||
-                  game.substate.state === "AWAITING_TRADE_CHOOSE_CARDS" ||
-                  game.substate.state === "AWAITING_STASH_RETURN_CARD" ||
-                  game.substate.state === "AWAITING_FRAME_CHOOSE_CARDS"
+                  game.substate.expectedAction === "SWAP_EVIDENCE" ||
+                  game.substate.expectedAction === "TRADE_CHOOSE_CARD" ||
+                  game.substate.expectedAction === "STASH_RETURN_CARD" ||
+                  game.substate.expectedAction === "FRAME_CHOOSE_CARD"
                 )
               )
                 return;
-              const activePlayer = game.players.find(
-                (p, i) => i === game.activePlayer
-              )!;
+              const activePlayer = getActivePlayer(game);
 
-              if (game.substate.state === "AWAITING_EVIDENCE_SWAP") {
+              if (game.substate.expectedAction === "SWAP_EVIDENCE") {
                 if (activePlayer.color !== myself.color) return;
                 return dispatch({
                   action: "SWAP_EVIDENCE",
                   playerCardIndex: i
                 });
-              } else if (
-                game.substate.state === "AWAITING_TRADE_CHOOSE_CARDS"
-              ) {
+              } else if (game.substate.expectedAction === "TRADE_CHOOSE_CARD") {
                 if (
                   activePlayer.playerInfo.id === myself.playerInfo.id &&
                   game.substate.mainPlayerCardIndex === null
@@ -394,14 +392,12 @@ const GameScreen = ({
                     playerCardIndex: i
                   });
                 }
-              } else if (game.substate.state === "AWAITING_STASH_RETURN_CARD") {
+              } else if (game.substate.expectedAction === "STASH_RETURN_CARD") {
                 dispatch({
                   action: "STASH_RETURN_CARD",
                   playerCardIndex: i
                 });
-              } else if (
-                game.substate.state === "AWAITING_FRAME_CHOOSE_CARDS"
-              ) {
+              } else if (game.substate.expectedAction === "FRAME_CHOOSE_CARD") {
                 dispatch({
                   action: "FRAME_CHOOSE_CARD",
                   playerCardIndex: i
@@ -417,7 +413,7 @@ const GameScreen = ({
                 : [];
 
             const disabled =
-              game.substate.state === "AWAITING_EVIDENCE_SWAP" &&
+              game.substate.expectedAction === "SWAP_EVIDENCE" &&
               isMyTurn &&
               iHaveCardOfOwnColor &&
               !cardColors.includes(me.color) &&
@@ -426,7 +422,7 @@ const GameScreen = ({
             const selectable =
               !disabled &&
               isChoosingCard(me, game) &&
-              game.substate.state !== "AWAITING_STASH_CHOOSE_CARD";
+              game.substate.expectedAction !== "STASH_CHOOSE_CARD";
             return (
               <PlayingCard
                 className={selectable ? "highlightCard" : ""}
@@ -480,12 +476,12 @@ const GameScreen = ({
               const choosingLocationDisableSameLocation =
                 myLocation &&
                 myTurn &&
-                game.substate.state === "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION";
+                game.substate.expectedAction === "GO_TO_LOCATION";
 
               const doingSomethingElseDisableOtherLocations =
                 myTurn &&
                 !myLocation &&
-                game.substate.state !== "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION";
+                game.substate.expectedAction !== "GO_TO_LOCATION";
               if (
                 choosingLocationDisableSameLocation ||
                 doingSomethingElseDisableOtherLocations
@@ -506,13 +502,8 @@ const GameScreen = ({
 
             function onLocationClick(game: Game, myself: GoatPlayer) {
               if (game.state !== "ONGOING") return;
-              if (
-                game.substate.state !== "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION"
-              )
-                return;
-              const activePlayer = game.players.find(
-                (p, i) => i === game.activePlayer
-              )!;
+              if (game.substate.expectedAction !== "GO_TO_LOCATION") return;
+              const activePlayer = getActivePlayer(game);
               if (activePlayer.color !== myself.color) return;
               if (myself.location === l.name) return;
 
@@ -529,12 +520,10 @@ const GameScreen = ({
             ) {
               if (
                 game.state !== "ONGOING" ||
-                game.substate.state !== "AWAITING_STASH_CHOOSE_CARD"
+                game.substate.expectedAction !== "STASH_CHOOSE_CARD"
               )
                 return;
-              const activePlayer = game.players.find(
-                (p, i) => i === game.activePlayer
-              );
+              const activePlayer = getActivePlayer(game);
               if (activePlayer?.color !== myself.color) return;
 
               dispatch({
@@ -545,7 +534,7 @@ const GameScreen = ({
 
             const shouldHighlightLocation =
               isMyTurn &&
-              game.substate.state === "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION" &&
+              game.substate.expectedAction === "GO_TO_LOCATION" &&
               l.name !== me.location;
 
             const locationClassName =
@@ -573,7 +562,7 @@ const GameScreen = ({
                     (() => {
                       const selectable =
                         isMyTurn &&
-                        game.substate.state === "AWAITING_STASH_CHOOSE_CARD";
+                        game.substate.expectedAction === "STASH_CHOOSE_CARD";
 
                       const stashCardClassName =
                         "locationDealtCard stashCard" +
@@ -585,8 +574,8 @@ const GameScreen = ({
                               onClick={() => onStashCardClick(game, me, i)}
                               selectable={
                                 isMyTurn &&
-                                game.substate.state ===
-                                  "AWAITING_STASH_CHOOSE_CARD"
+                                game.substate.expectedAction ===
+                                  "STASH_CHOOSE_CARD"
                               }
                               key={c.id}
                               className={stashCardClassName}
@@ -742,7 +731,7 @@ const App = () => {
       case "GO_TO_LOCATION": {
         if (
           lastEvent.location === "FRAME/STEAL" &&
-          game.substate.state === "AWAITING_FRAME_CHOOSE_CARDS"
+          game.substate.expectedAction === "FRAME_CHOOSE_CARD"
         ) {
           SOUNDS.FRAME_ATTEMPT.play().catch(() => {});
         }
@@ -774,7 +763,7 @@ const App = () => {
         SOUNDS.PAGE_FLIP.play().catch(() => {});
         return;
       }
-      case "TRADE_WITH_PLAYER": {
+      case "TRADE_CHOOSE_PLAYER": {
         SOUNDS.GOAT.play().catch(() => {});
         return;
       }
@@ -794,9 +783,7 @@ const App = () => {
         return;
       }
       case "FINISHED": {
-        const activePlayer = game.players.find(
-          (p, i) => i === game.activePlayer
-        )!;
+        const activePlayer = getActivePlayer(game);
         const scapegoat = game.players.find((p) => p.color === game.scapegoat)!;
 
         const framed = activePlayer.location === "FRAME/STEAL";

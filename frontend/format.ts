@@ -8,7 +8,7 @@ import {
   UserFacingGameEvent
 } from "../common/game";
 import { NicknameValidationResult } from "../common/toolbox";
-import { isChoosingCard } from "../common/logicHelpers";
+import { getActivePlayer, isChoosingCard } from "../common/logicHelpers";
 
 export function formatNickname(p: GoatPlayer) {
   return `${p.playerInfo.nickname} (${p.color})`;
@@ -175,7 +175,7 @@ export const formatLogEntry = (
         { text: " has chosen a card to trade" }
       ];
     }
-    case "TRADE_WITH_PLAYER": {
+    case "TRADE_CHOOSE_PLAYER": {
       const otherPlayer = game.players.find((p) => p.color === e.playerColor)!;
       return [
         { text: formatNickname(player), color: player.color },
@@ -193,49 +193,49 @@ export function formatPlayerActionText(
   player: GoatPlayer
 ) {
   const substate = game.substate;
-  const activePlayer = game.players.find((p, i) => i === game.activePlayer)!;
+  const activePlayer = getActivePlayer(game);
 
-  switch (substate.state) {
-    case "AWAITING_EVIDENCE_SWAP": {
+  switch (substate.expectedAction) {
+    case "SWAP_EVIDENCE": {
       if (player !== activePlayer) return "";
       const location = game.locations.find((l) => l.name === substate.location);
       return `Choose a card from hand to swap with the face-up card at ${location?.userFacingName}.`;
     }
-    case "AWAITING_FRAME_CHOOSE_CARDS": {
+    case "FRAME_CHOOSE_CARD": {
       return isChoosingCard(player, game)
         ? "Choose a card for Frame Attempt!"
         : "";
     }
-    case "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION": {
+    case "GO_TO_LOCATION": {
       if (player !== activePlayer) return "";
       return "Choose location to go to.";
     }
-    case "AWAITING_SPY_CHOOSE_PLAYER": {
+    case "SPY_ON_PLAYER": {
       if (player !== activePlayer) return "";
       return "Choose a player whose hand to look at.";
     }
-    case "AWAITING_SPY_CONFIRM": {
+    case "SPY_ON_PLAYER_CONFIRM": {
       const otherPlayer = game.players.find(
         (p) => p.playerInfo.id === substate.otherPlayerId
       )!;
       if (player !== activePlayer) return "";
       return `Looking at ${formatNickname(otherPlayer)}'s hand...`;
     }
-    case "AWAITING_STASH_CHOOSE_CARD": {
+    case "STASH_CHOOSE_CARD": {
       if (player !== activePlayer) return "";
       return "Choose a face-down card from Stash.";
     }
-    case "AWAITING_STASH_RETURN_CARD": {
+    case "STASH_RETURN_CARD": {
       if (player !== activePlayer) return "";
       return `Choose a card from hand to return to slot #${
         substate.stashCardIndex + 1
       } in Stash.`;
     }
-    case "AWAITING_STEAL_CHOOSE_PLAYER": {
+    case "STEAL_CHOOSE_PLAYER": {
       if (player !== activePlayer) return "";
       return "Choose a player to steal a preparation token from.";
     }
-    case "AWAITING_TRADE_CHOOSE_CARDS": {
+    case "TRADE_CHOOSE_CARD": {
       const otherPlayer = game.players.find(
         (p) => substate.otherPlayerId === p.playerInfo.id
       )!;
@@ -246,7 +246,7 @@ export function formatPlayerActionText(
           )}.`
         : "";
     }
-    case "AWAITING_TRADE_CHOOSE_PLAYER": {
+    case "TRADE_CHOOSE_PLAYER": {
       if (player !== activePlayer) return "";
       return "Choose a player to trade with.";
     }

@@ -5,8 +5,8 @@ export const isChoosingCard = (
   game: GameInStartedState
 ) => {
   const substate = game.substate;
-  if (substate.state === "AWAITING_TRADE_CHOOSE_CARDS") {
-    const activePlayer = game.players.find((p, i) => i === game.activePlayer)!;
+  if (substate.expectedAction === "TRADE_CHOOSE_CARD") {
+    const activePlayer = getActivePlayer(game);
     const otherPlayer = game.players.find(
       (p) => substate.otherPlayerId === p.playerInfo.id
     )!;
@@ -18,14 +18,14 @@ export const isChoosingCard = (
       return false;
 
     return true;
-  } else if (substate.state === "AWAITING_FRAME_CHOOSE_CARDS") {
+  } else if (substate.expectedAction === "FRAME_CHOOSE_CARD") {
     if (substate.cards.some((fc) => fc.playerId === player.playerInfo.id)) {
       return false;
     }
     return true;
   } else if (
-    substate.state === "AWAITING_EVIDENCE_SWAP" ||
-    substate.state === "AWAITING_STASH_RETURN_CARD"
+    substate.expectedAction === "SWAP_EVIDENCE" ||
+    substate.expectedAction === "STASH_RETURN_CARD"
   ) {
     return (
       game.state === "ONGOING" &&
@@ -45,7 +45,7 @@ export const playerCanGoToTheCops = (
   const isMyTurn = game.players.indexOf(player) === game.activePlayer;
 
   const iAmChoosingLocation =
-    isMyTurn && game.substate.state === "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION";
+    isMyTurn && game.substate.expectedAction === "GO_TO_LOCATION";
   // Special rule in 6-player game where player can go to cops if the player 3 spots to their left is playing
   const isSixPlayerGameAndTurnIsThreeToMyLeft =
     game.players.length === 6 &&
@@ -53,3 +53,6 @@ export const playerCanGoToTheCops = (
 
   return iAmChoosingLocation || isSixPlayerGameAndTurnIsThreeToMyLeft;
 };
+
+export const getActivePlayer = (game: GameInStartedState) =>
+  game.players.find((p, i) => i === game.activePlayer)!;

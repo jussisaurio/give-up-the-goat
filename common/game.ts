@@ -1,4 +1,4 @@
-import { playerCanGoToTheCops } from "./logicHelpers";
+import { getActivePlayer, playerCanGoToTheCops } from "./logicHelpers";
 import { getRandomElement } from "./toolbox";
 
 export const PLAYER_COLORS = [
@@ -186,7 +186,7 @@ export type GameAction =
       location: LocationName;
     }
   | {
-      action: "TRADE_WITH_PLAYER";
+      action: "TRADE_CHOOSE_PLAYER";
       playerColor: PlayerColor;
     }
   | {
@@ -307,41 +307,41 @@ export type LocationArea =
 
 export type SubState =
   | {
-      state: "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION";
+      expectedAction: "GO_TO_LOCATION";
     }
   | {
-      state: "AWAITING_TRADE_CHOOSE_PLAYER";
+      expectedAction: "TRADE_CHOOSE_PLAYER";
     }
   | {
-      state: "AWAITING_TRADE_CHOOSE_CARDS";
+      expectedAction: "TRADE_CHOOSE_CARD";
       otherPlayerId: string;
       mainPlayerCardIndex: number | null;
       otherPlayerCardIndex: number | null;
     }
   | {
-      state: "AWAITING_SPY_CHOOSE_PLAYER";
+      expectedAction: "SPY_ON_PLAYER";
     }
   | {
-      state: "AWAITING_SPY_CONFIRM";
+      expectedAction: "SPY_ON_PLAYER_CONFIRM";
       otherPlayerId: string;
     }
   | {
-      state: "AWAITING_STASH_CHOOSE_CARD";
+      expectedAction: "STASH_CHOOSE_CARD";
     }
   | {
-      state: "AWAITING_STASH_RETURN_CARD";
+      expectedAction: "STASH_RETURN_CARD";
       stashCardIndex: number;
     }
   | {
-      state: "AWAITING_EVIDENCE_SWAP";
+      expectedAction: "SWAP_EVIDENCE";
       location: Omit<LocationName, "COPS">;
     }
   | {
-      state: "AWAITING_FRAME_CHOOSE_CARDS";
+      expectedAction: "FRAME_CHOOSE_CARD";
       cards: { playerId: string; playerCardIndex: number }[];
     }
   | {
-      state: "AWAITING_STEAL_CHOOSE_PLAYER";
+      expectedAction: "STEAL_CHOOSE_PLAYER";
     };
 
 export type StartedGame = {
@@ -545,7 +545,7 @@ export const activateGame = (game: Game): Game & { state: "ONGOING" } => {
   return {
     ...game,
     state: "ONGOING",
-    substate: { state: "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION" },
+    substate: { expectedAction: "GO_TO_LOCATION" },
     activePlayer: 0,
     players: finalPlayers,
     locations,
@@ -555,58 +555,84 @@ export const activateGame = (game: Game): Game & { state: "ONGOING" } => {
   };
 };
 
+export const isExpectedAction = <T extends GameAction>(
+  game: Game,
+  action: T
+): game is Game & { substate: { expectedAction: T["action"] } } => {
+  return "substate" in game && game.substate.expectedAction === action.action;
+};
+
 export const playTurn = (
   game: Game,
   playerId: string,
   action: GameAction
 ): [boolean, Game] => {
   if (game.state !== "ONGOING") {
-    throw Error(
-      `Cannot play turn in ${game.id} when its state is ${game.state}`
+    console.error(
+      "Invalid action by " + playerId + ", game not in ONGOING state"
     );
+    console.error(JSON.stringify(action, null, 2));
+    console.error(JSON.stringify(game, null, 2));
+    return [false, game];
   }
 
-  const activePlayer = game.players.find((p, i) => game.activePlayer === i)!;
+  const logAndFail = (
+    reason: string = `Expecting ${game.substate.expectedAction}, got ${action.action}`
+  ) => {
+    console.error("Invalid action by " + playerId + ", " + reason);
+    console.error(JSON.stringify(action, null, 2));
+    console.error(JSON.stringify(game, null, 2));
+    return [false, game] as [boolean, Game];
+  };
 
-  const player = game.players.find((p) => p.playerInfo.id === playerId);
+  const activePlayer = getActivePlayer(game);
+  const playerWhoSentTheEvent = game.players.find(
+    (p) => p.playerInfo.id === playerId
+  );
+
+  if (!playerWhoSentTheEvent) {
+    return logAndFail("Player is not participant in game");
+  }
+
+  const activePlayerSentTheEvent = activePlayer === playerWhoSentTheEvent;
+
+  // Generally only the active player with turn can perform an action. There are three exceptions:
+  // 1. Player is going to the cops in a 6-player game out of turn, on the turn of the player 3 seats to their left.
+  // 2. Player is choosing a card for the Trade action that someone else initiated with them.
+  // 3. Player is choosing a card for the Frame action that someone else initiated.
   const goingToCopsOutOfTurn =
-    player &&
-    player !== activePlayer &&
+    !activePlayerSentTheEvent &&
     action.action === "GO_TO_LOCATION" &&
     action.location === "COPS" &&
-    playerCanGoToTheCops(player, game);
+    playerCanGoToTheCops(playerWhoSentTheEvent, game);
 
-  if (activePlayer.playerInfo.id !== playerId) {
-    const isValidTradeParticipant =
-      game.substate.state === "AWAITING_TRADE_CHOOSE_CARDS" &&
-      game.substate.otherPlayerId === playerId &&
-      game.substate.otherPlayerCardIndex === null;
+  const isValidTradeParticipant =
+    !activePlayerSentTheEvent &&
+    game.substate.expectedAction === "TRADE_CHOOSE_CARD" &&
+    game.substate.otherPlayerId === playerId &&
+    game.substate.otherPlayerCardIndex === null;
 
-    const isValidFrameParticipant =
-      game.substate.state === "AWAITING_FRAME_CHOOSE_CARDS";
+  const isValidFrameParticipant =
+    !activePlayerSentTheEvent &&
+    game.substate.expectedAction === "FRAME_CHOOSE_CARD";
 
-    if (
-      !isValidTradeParticipant &&
-      !isValidFrameParticipant &&
-      !goingToCopsOutOfTurn
-    ) {
-      console.error("Invalid action by " + playerId);
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
+  if (
+    !activePlayerSentTheEvent &&
+    !goingToCopsOutOfTurn &&
+    !isValidFrameParticipant &&
+    !isValidTradeParticipant
+  ) {
+    return logAndFail("Illegally moving out of turn");
   }
 
   // MOVE TO LOCATION
   if (action.action === "GO_TO_LOCATION") {
-    if (
-      game.substate.state !== "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION" &&
-      !goingToCopsOutOfTurn
-    ) {
-      console.error("Invalid action by " + playerId);
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
+    if (!goingToCopsOutOfTurn && !isExpectedAction(game, action)) {
+      return logAndFail("Expecting GO_TO_LOCATION from active player");
+    }
+
+    if (action.location === playerWhoSentTheEvent.location) {
+      return logAndFail("Cannot move to same location where already is");
     }
 
     switch (action.location) {
@@ -622,14 +648,11 @@ export const playTurn = (
       }
       case "FRAME/STEAL": {
         if (game.preparationTokens > 0) {
-          console.error(
-            "Invalid FRAME/STEAL action by " +
-              playerId +
-              ", there are still preparation tokens on table"
+          return logAndFail(
+            "Cannot move to FRAME/STEAL when there are still " +
+              game.preparationTokens +
+              " tokens left"
           );
-          console.error(JSON.stringify(action, null, 2));
-          console.error(JSON.stringify(game, null, 2));
-          return [false, game];
         }
 
         if (activePlayer.preparationTokens > 0) {
@@ -645,7 +668,7 @@ export const playTurn = (
                   location: "FRAME/STEAL"
                 };
               }),
-              substate: { state: "AWAITING_FRAME_CHOOSE_CARDS", cards: [] }
+              substate: { expectedAction: "FRAME_CHOOSE_CARD", cards: [] }
             }
           ];
         } else {
@@ -661,17 +684,16 @@ export const playTurn = (
                   location: "FRAME/STEAL"
                 };
               }),
-              substate: { state: "AWAITING_STEAL_CHOOSE_PLAYER" }
+              substate: { expectedAction: "STEAL_CHOOSE_PLAYER" }
             }
           ];
         }
       }
       case "PREPARE": {
         if (game.preparationTokens === 0) {
-          console.error("Invalid action by " + playerId);
-          console.error(JSON.stringify(action, null, 2));
-          console.error(JSON.stringify(game, null, 2));
-          return [false, game];
+          return logAndFail(
+            `Cannot move to PREPARE when there are no preparation tokens left`
+          );
         } else if (game.preparationTokens === 1) {
           return [
             true,
@@ -679,7 +701,7 @@ export const playTurn = (
               ...game,
               events: addEventToGameEvents(game.events, action, playerId),
               substate: {
-                state: "AWAITING_EVIDENCE_SWAP",
+                expectedAction: "SWAP_EVIDENCE",
                 location: "FRAME/STEAL"
               },
               preparationTokens: 0,
@@ -711,7 +733,7 @@ export const playTurn = (
               ...game,
               events: addEventToGameEvents(game.events, action, playerId),
               substate: {
-                state: "AWAITING_EVIDENCE_SWAP",
+                expectedAction: "SWAP_EVIDENCE",
                 location: "PREPARE"
               },
               preparationTokens: 1,
@@ -740,7 +762,7 @@ export const playTurn = (
                 location: "SPY"
               };
             }),
-            substate: { state: "AWAITING_SPY_CHOOSE_PLAYER" }
+            substate: { expectedAction: "SPY_ON_PLAYER" }
           }
         ];
       }
@@ -757,7 +779,7 @@ export const playTurn = (
                 location: "STASH"
               };
             }),
-            substate: { state: "AWAITING_STASH_CHOOSE_CARD" }
+            substate: { expectedAction: "STASH_CHOOSE_CARD" }
           }
         ];
       }
@@ -774,28 +796,26 @@ export const playTurn = (
                 location: "TRADE"
               };
             }),
-            substate: { state: "AWAITING_TRADE_CHOOSE_PLAYER" }
+            substate: { expectedAction: "TRADE_CHOOSE_PLAYER" }
           }
         ];
       }
       default:
-        return [false, game];
+        return logAndFail(
+          "Trying to move to unknown location " + action.location
+        );
     }
   }
 
   // CHOOSE PLAYER TO TRADE WITH
-  if (action.action === "TRADE_WITH_PLAYER") {
+  if (action.action === "TRADE_CHOOSE_PLAYER") {
+    if (!isExpectedAction(game, action)) return logAndFail();
+
     const otherPlayer = game.players.find(
       (p) => p.playerInfo.id !== playerId && p.color === action.playerColor
     );
-    if (
-      !otherPlayer ||
-      game.substate.state !== "AWAITING_TRADE_CHOOSE_PLAYER"
-    ) {
-      console.error("Invalid action by " + playerId);
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
+    if (!otherPlayer) {
+      return logAndFail("Trying to trade with nonexistent player");
     }
 
     return [
@@ -804,7 +824,7 @@ export const playTurn = (
         ...game,
         events: addEventToGameEvents(game.events, action, playerId),
         substate: {
-          state: "AWAITING_TRADE_CHOOSE_CARDS",
+          expectedAction: "TRADE_CHOOSE_CARD",
           otherPlayerId: otherPlayer.playerInfo.id,
           mainPlayerCardIndex: null,
           otherPlayerCardIndex: null
@@ -815,48 +835,27 @@ export const playTurn = (
 
   // CHOOSE CARD TO TRADE -- requires two different players to perform the same action to move on
   if (action.action === "TRADE_CHOOSE_CARD") {
-    if (game.substate.state !== "AWAITING_TRADE_CHOOSE_CARDS") {
-      console.error(
-        "Invalid action by " +
-          playerId +
-          ", not in AWAITING_TRADE_CHOOSE_CARDS state"
-      );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
-
+    if (!isExpectedAction(game, action)) return logAndFail();
     const { otherPlayerId } = game.substate;
 
-    const player = game.players.find((p) => p.playerInfo.id === playerId);
-    const activePlayer = game.players.find((p, i) => game.activePlayer === i)!;
     const otherPlayer = game.players.find(
       (p, i) => p.playerInfo.id === otherPlayerId
     )!;
 
-    if (!player || (player !== activePlayer && player !== otherPlayer)) {
-      console.error(
-        "Invalid action by " +
-          playerId +
-          ", player is not either of involved parties"
-      );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
+    if (
+      playerWhoSentTheEvent !== activePlayer &&
+      playerWhoSentTheEvent !== otherPlayer
+    ) {
+      return logAndFail("Player is not either of the Trade participants");
     }
 
-    const isActivePlayer = player === activePlayer;
+    const isActivePlayer = playerWhoSentTheEvent === activePlayer;
 
     if (
       (isActivePlayer && game.substate.mainPlayerCardIndex !== null) ||
       (!isActivePlayer && game.substate.otherPlayerCardIndex !== null)
     ) {
-      console.error(
-        "Invalid action by " + playerId + ", has already chosen card"
-      );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
+      return logAndFail("Player has already chosen card");
     }
 
     const chosenCardIndex = (
@@ -864,12 +863,10 @@ export const playTurn = (
     ).cards.findIndex((c, i) => i === action.playerCardIndex);
 
     if (chosenCardIndex === -1) {
-      console.error(
-        "Invalid action by " + playerId + ", chosen card not found"
+      return logAndFail(
+        "Player has chosen a card index out of bounds: " +
+          action.playerCardIndex
       );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
     }
 
     const activePlayerIndex = isActivePlayer
@@ -906,7 +903,7 @@ export const playTurn = (
       {
         ...game,
         events: addEventToGameEvents(game.events, action, playerId),
-        substate: { state: "AWAITING_EVIDENCE_SWAP", location: "TRADE" },
+        substate: { expectedAction: "SWAP_EVIDENCE", location: "TRADE" },
         players: game.players.map((p) => {
           if (p === activePlayer) {
             return {
@@ -936,21 +933,13 @@ export const playTurn = (
 
   // CHOOSE PLAYER TO SPY ON
   if (action.action === "SPY_ON_PLAYER") {
-    if (game.substate.state !== "AWAITING_SPY_CHOOSE_PLAYER") {
-      console.error("Invalid action by " + playerId);
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
+    if (!isExpectedAction(game, action)) return logAndFail();
 
     const otherPlayer = game.players.find(
       (p) => p.playerInfo.id !== playerId && p.color === action.playerColor
     );
     if (!otherPlayer) {
-      console.error("Invalid action by " + playerId);
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
+      return logAndFail("Trying to spy on nonexistent player");
     }
 
     return [
@@ -959,7 +948,7 @@ export const playTurn = (
         ...game,
         events: addEventToGameEvents(game.events, action, playerId),
         substate: {
-          state: "AWAITING_SPY_CONFIRM",
+          expectedAction: "SPY_ON_PLAYER_CONFIRM",
           otherPlayerId: otherPlayer.playerInfo.id
         }
       }
@@ -968,28 +957,18 @@ export const playTurn = (
 
   // CHOOSE PLAYER TO SPY ON
   if (action.action === "SPY_ON_PLAYER_CONFIRM") {
-    if (game.substate.state !== "AWAITING_SPY_CONFIRM") {
-      console.error("Invalid action by " + playerId);
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
+    if (!isExpectedAction(game, action)) return logAndFail();
     return [
       true,
       {
         ...game,
-        substate: { state: "AWAITING_EVIDENCE_SWAP", location: "SPY" }
+        substate: { expectedAction: "SWAP_EVIDENCE", location: "SPY" }
       }
     ];
   }
 
   if (action.action === "STASH_CHOOSE_CARD") {
-    if (game.substate.state !== "AWAITING_STASH_CHOOSE_CARD") {
-      console.error("Invalid action by " + playerId);
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
+    if (!isExpectedAction(game, action)) return logAndFail();
 
     const stash = game.locations.find(
       (l) => l.name === "STASH"
@@ -998,15 +977,10 @@ export const playTurn = (
     const stashCard = stash.stash[action.stashCardIndex];
 
     if (!stashCard) {
-      console.error(
-        "Invalid action by " +
-          playerId +
-          ", stash card index out of bounds: " +
+      return logAndFail(
+        "Player has chosen a Stash card index out of bounds: " +
           action.stashCardIndex
       );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
     }
 
     return [
@@ -1015,7 +989,7 @@ export const playTurn = (
         ...game,
         events: addEventToGameEvents(game.events, action, playerId),
         substate: {
-          state: "AWAITING_STASH_RETURN_CARD",
+          expectedAction: "STASH_RETURN_CARD",
           stashCardIndex: action.stashCardIndex
         },
         locations: game.locations.map((l) => {
@@ -1037,32 +1011,16 @@ export const playTurn = (
   }
 
   if (action.action === "STASH_RETURN_CARD") {
-    if (game.substate.state !== "AWAITING_STASH_RETURN_CARD") {
-      console.error(
-        "Invalid action by " +
-          playerId +
-          ", not expecting STASH_RETURN_CARD, expecting " +
-          game.substate.state
-      );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
+    if (!isExpectedAction(game, action)) return logAndFail();
 
     const stashCardIndex = game.substate.stashCardIndex;
 
     const playerCard = activePlayer.cards[action.playerCardIndex];
 
     if (!playerCard) {
-      console.error(
-        "Invalid STASH_RETURN_CARD action by " +
-          playerId +
-          ", card not found at index " +
-          action.playerCardIndex
+      return logAndFail(
+        "Player has chosen a card out of bounds: " + action.playerCardIndex
       );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
     }
 
     return [
@@ -1070,7 +1028,7 @@ export const playTurn = (
       {
         ...game,
         events: addEventToGameEvents(game.events, action, playerId),
-        substate: { state: "AWAITING_EVIDENCE_SWAP", location: "STASH" },
+        substate: { expectedAction: "SWAP_EVIDENCE", location: "STASH" },
         locations: game.locations.map((l) => {
           if (l.name !== "STASH") return l;
           return {
@@ -1094,12 +1052,7 @@ export const playTurn = (
   }
 
   if (action.action === "SWAP_EVIDENCE") {
-    if (game.substate.state !== "AWAITING_EVIDENCE_SWAP") {
-      console.error("Invalid action by " + playerId);
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
+    if (!isExpectedAction(game, action)) return logAndFail();
 
     const swapLocationName = game.substate.location;
 
@@ -1113,10 +1066,9 @@ export const playTurn = (
       swapLocation && "card" in swapLocation && swapLocation.card;
 
     if (!playerCard || !swapLocationCard || !swapLocation) {
-      console.error("Invalid action by " + playerId);
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
+      return logAndFail(
+        "Player card doesnt exist, swap location doesnt exist, or swap location does not have a card"
+      );
     }
 
     return [
@@ -1129,7 +1081,7 @@ export const playTurn = (
           playerId
         ),
         activePlayer: (game.activePlayer + 1) % game.players.length,
-        substate: { state: "AWAITING_MAIN_PLAYER_CHOOSE_LOCATION" },
+        substate: { expectedAction: "GO_TO_LOCATION" },
         locations: game.locations.map((l) => {
           if (l !== swapLocation) return l;
           return {
@@ -1153,54 +1105,20 @@ export const playTurn = (
   }
 
   if (action.action === "STEAL_CHOOSE_PLAYER") {
-    if (game.substate.state !== "AWAITING_STEAL_CHOOSE_PLAYER") {
-      console.error(
-        "Invalid STEAL_CHOOSE_PLAYER action by " +
-          playerId +
-          ", expecting " +
-          game.substate.state
-      );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
+    if (!isExpectedAction(game, action)) return logAndFail();
 
     const otherPlayer = game.players.find(
       (p) => p.color === action.playerColor
     );
 
-    if (!otherPlayer) {
-      console.error(
-        "Invalid STEAL_CHOOSE_PLAYER action by " +
-          playerId +
-          ", invalid color " +
-          action.playerColor
+    if (
+      !otherPlayer ||
+      otherPlayer.color === activePlayer.color ||
+      otherPlayer.preparationTokens === 0
+    ) {
+      return logAndFail(
+        "Player doesnt exist, or player trying to steal from self or a player with no tokens"
       );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
-
-    if (otherPlayer.color === activePlayer.color) {
-      console.error(
-        "Invalid STEAL action by " + playerId + ", cant steal from self"
-      );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
-
-    if (otherPlayer.preparationTokens === 0) {
-      console.error(
-        "Invalid STEAL action by " +
-          playerId +
-          ", " +
-          otherPlayer.color +
-          " has no preparation tokens"
-      );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
     }
 
     return [
@@ -1208,7 +1126,7 @@ export const playTurn = (
       {
         ...game,
         events: addEventToGameEvents(game.events, action, playerId),
-        substate: { state: "AWAITING_EVIDENCE_SWAP", location: "FRAME/STEAL" },
+        substate: { expectedAction: "SWAP_EVIDENCE", location: "FRAME/STEAL" },
         players: game.players.map((p) => {
           if (p !== otherPlayer && p !== activePlayer) return p;
           return {
@@ -1224,35 +1142,14 @@ export const playTurn = (
   }
 
   if (action.action === "FRAME_CHOOSE_CARD") {
-    if (game.substate.state !== "AWAITING_FRAME_CHOOSE_CARDS") {
-      console.error(
-        "Invalid FRAME_CHOOSE_CARD action by " +
-          playerId +
-          ", expecting " +
-          game.substate.state
-      );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
+    if (!isExpectedAction(game, action)) return logAndFail();
 
-    const player = game.players.find((p) => p.playerInfo.id === playerId);
-    if (!player) {
-      console.error(
-        "Invalid FRAME_CHOOSE_CARD - Player not in game:" + playerId
-      );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
-    }
-
-    if (game.substate.cards.some((c) => c.playerId === player.playerInfo.id)) {
-      console.error(
-        "Invalid FRAME_CHOOSE_CARD - player has already chosen card:" + playerId
-      );
-      console.error(JSON.stringify(action, null, 2));
-      console.error(JSON.stringify(game, null, 2));
-      return [false, game];
+    if (
+      game.substate.cards.some(
+        (c) => c.playerId === playerWhoSentTheEvent.playerInfo.id
+      )
+    ) {
+      return logAndFail("Player has already chosen a card for Frame");
     }
 
     const cards = [
@@ -1266,7 +1163,7 @@ export const playTurn = (
         {
           ...game,
           events: addEventToGameEvents(game.events, action, playerId),
-          substate: { state: "AWAITING_FRAME_CHOOSE_CARDS", cards }
+          substate: { expectedAction: "FRAME_CHOOSE_CARD", cards }
         }
       ];
     }
@@ -1276,16 +1173,13 @@ export const playTurn = (
       {
         ...game,
         events: addEventToGameEvents(game.events, action, playerId),
-        substate: { state: "AWAITING_FRAME_CHOOSE_CARDS", cards },
+        substate: { expectedAction: "FRAME_CHOOSE_CARD", cards },
         state: "PAUSED_FOR_FRAME_CHECK",
         frameCards: cards
       }
     ];
   }
 
-  // MISSING: FRAME/STEAL, GO TO COPS
-  console.error("Unknown action by " + playerId);
-  console.error(JSON.stringify(action, null, 2));
-  console.error(JSON.stringify(game, null, 2));
-  return [false, game];
+  // unexpected
+  return logAndFail("Something unexpected happened");
 };
