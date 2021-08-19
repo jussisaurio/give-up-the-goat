@@ -341,6 +341,14 @@ const GameScreen = ({
             You are {formatNickname(me)}
           </div>
           <div>{formatPlayerActionText(game, me)}</div>.
+          <div className="scapegoatReassurance">
+            You think the scapegoat is{" "}
+            <span style={{ color: me.suspect }}>
+              {formatNickname(
+                game.players.find((p) => p.color === me.suspect)!
+              )}
+            </span>
+          </div>
         </div>
         <div className="cardsContainer">
           {me.cards.map((card, i) => {
