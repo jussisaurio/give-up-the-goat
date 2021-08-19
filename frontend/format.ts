@@ -20,7 +20,8 @@ export const mapPlayerColorToUIColor = (color: PlayerColor) => {
 
 type LogChunk = { text: string; color?: string; bold?: boolean };
 
-const splitCardToChunks = (c: DealtCard) => {
+const splitCardToChunks = (c: DealtCard | undefined) => {
+  if (!c) return [{ text: "???" }];
   switch (c.type) {
     case "dual": {
       return [
@@ -49,6 +50,23 @@ const splitCardToChunks = (c: DealtCard) => {
   }
 };
 
+const formatFrameCards = (
+  game: StartedGame,
+  frameCards: { playerId: string; playerCardIndex: number }[]
+) => {
+  return frameCards.flatMap(({ playerId, playerCardIndex }) => {
+    const player = game.players.find((p) => p.playerInfo.id === playerId)!;
+    const playerCard = player.cards[playerCardIndex];
+
+    return [
+      { text: formatNickname(player), color: player.color },
+      { text: " shows " },
+      ...splitCardToChunks(playerCard),
+      { text: ". " }
+    ];
+  });
+};
+
 export const formatLogEntry = (
   e: UserFacingGameEvent,
   game: StartedGame
@@ -73,7 +91,8 @@ export const formatLogEntry = (
       }
       case "FRAME_FAILURE":
         return [
-          { text: "The frame attempt fails due to insufficient evidence!" }
+          { text: "The frame attempt fails due to insufficient evidence! " },
+          ...formatFrameCards(game, e.frameCards)
         ];
       case "FRAME_SUCCESS": {
         const scapegoat = game.players.find((p) => p.color === game.scapegoat)!;
