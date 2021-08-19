@@ -1,16 +1,17 @@
 import {
-  DealtCard,
+  Card,
   GameInStartedState,
   GoatPlayer,
   LocationArea,
   PlayerColor,
   StartedGame,
+  UICard,
   UserFacingGameEvent
 } from "../common/game";
 import { NicknameValidationResult } from "../common/toolbox";
 import { getActivePlayer, isChoosingCard } from "../common/logicHelpers";
 
-export function formatNickname(p: GoatPlayer) {
+export function formatNickname(p: GoatPlayer<"UI">) {
   return `${p.playerInfo.nickname} (${p.color})`;
 }
 
@@ -20,8 +21,9 @@ export const mapPlayerColorToUIColor = (color: PlayerColor) => {
 
 type LogChunk = { text: string; color?: string; bold?: boolean };
 
-const splitCardToChunks = (c: DealtCard | undefined) => {
-  if (!c) return [{ text: "???" }];
+const splitCardToChunks = (card: UICard | undefined) => {
+  if (!card || card.face === "DOWN") return [{ text: "???" }];
+  const c = card.card;
   switch (c.type) {
     case "dual": {
       return [
@@ -51,7 +53,7 @@ const splitCardToChunks = (c: DealtCard | undefined) => {
 };
 
 const formatFrameCards = (
-  game: StartedGame,
+  game: StartedGame<"UI">,
   frameCards: { playerId: string; playerCardIndex: number }[]
 ) => {
   return frameCards.flatMap(({ playerId, playerCardIndex }) => {
@@ -69,11 +71,12 @@ const formatFrameCards = (
 
 export const formatLogEntry = (
   e: UserFacingGameEvent,
-  game: StartedGame
+  game: GameInStartedState<"UI">
 ): LogChunk[] => {
   if ("event" in e) {
     switch (e.event) {
       case "COPS_CALLED": {
+        if (game.state !== "FINISHED") return [];
         const scapegoat = game.players.find((p) => p.color === game.scapegoat)!;
         const copCaller = game.players.find((p, i) => i === game.activePlayer)!;
         return scapegoat === copCaller
@@ -95,6 +98,7 @@ export const formatLogEntry = (
           ...formatFrameCards(game, e.frameCards)
         ];
       case "FRAME_SUCCESS": {
+        if (game.state !== "FINISHED") return [];
         const scapegoat = game.players.find((p) => p.color === game.scapegoat)!;
         return [
           { text: "The scapegoat" },
@@ -175,12 +179,14 @@ export const formatLogEntry = (
     case "SWAP_EVIDENCE": {
       const playerLocation = game.locations.find(
         (l) => l.name === player.location
-      ) as LocationArea & { card: DealtCard };
+      ) as LocationArea<"UI"> & { card: UICard };
 
       return [
         { text: formatNickname(player), color: player.color },
         { text: " takes the " },
-        ...("takenCard" in e ? splitCardToChunks(e.takenCard) : [{ text: "" }]),
+        ...("takenCard" in e
+          ? splitCardToChunks({ face: "UP", card: e.takenCard })
+          : [{ text: "" }]),
         { text: " evidence card from " },
         { text: playerLocation.userFacingName, bold: true },
         { text: " and puts back a " },
@@ -208,8 +214,8 @@ export const formatLogEntry = (
 };
 
 export function formatPlayerActionText(
-  game: GameInStartedState,
-  player: GoatPlayer
+  game: GameInStartedState<"UI">,
+  player: GoatPlayer<"UI">
 ) {
   const substate = game.substate;
   const activePlayer = getActivePlayer(game);

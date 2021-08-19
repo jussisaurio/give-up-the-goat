@@ -2,7 +2,7 @@ import React from "react";
 import { GoatPlayer } from "../common/game";
 import { formatNickname, mapPlayerColorToUIColor } from "./format";
 
-export const Go = ({ player }: { player: GoatPlayer }) => (
+export const Go = ({ player }: { player: GoatPlayer<"UI"> & { me: true } }) => (
   <div className="go">
     <div>The game starts!</div>
     <div>

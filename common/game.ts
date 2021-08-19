@@ -42,8 +42,6 @@ export type Card =
       };
     };
 
-export type DealtCard = Card & { id: string };
-
 export const DECK: Card[] = [
   {
     type: "single",
@@ -223,7 +221,7 @@ export type GameAction =
 
 export type EnrichedGameAction =
   | GameAction
-  | (GameAction & { action: "SWAP_EVIDENCE"; takenCard: DealtCard });
+  | (GameAction & { action: "SWAP_EVIDENCE"; takenCard: Card });
 
 export type UserFacingGameEvent = { ts: number } & (
   | (EnrichedGameAction & {
@@ -269,6 +267,9 @@ export type EarlyGameLocationName = typeof EARLY_GAME_LOCATION_NAMES[number];
 export type LateGameLocationName = typeof LATE_GAME_LOCATION_NAMES[number];
 export type LocationName = EarlyGameLocationName | LateGameLocationName;
 
+// Differentiate between UI and server state to prevent leaking other players game info
+export type StateType = "SERVER" | "UI";
+
 // human player, not tied to specific game
 export type PlayerInfo = {
   id: string;
@@ -284,24 +285,34 @@ export type InitialGoatPlayer = {
 };
 
 export type DealtInGoatPlayer = InitialGoatPlayer & {
-  cards: DealtCard[];
+  cards: Card[];
 };
 
-export type GoatPlayer = DealtInGoatPlayer & {
-  location: LocationName;
-};
+type GoatPlayerWithLocation = DealtInGoatPlayer & { location: LocationName };
 
-export type LocationArea =
+export type UICard = { face: "DOWN" } | { face: "UP"; card: Card };
+
+export type GoatPlayer<S extends StateType> = S extends "SERVER"
+  ? GoatPlayerWithLocation
+  :
+      | ({ me: true } & Omit<GoatPlayerWithLocation, "cards"> & {
+            cards: { face: "UP"; card: Card }[];
+          })
+      | ({ me: false } & Omit<GoatPlayerWithLocation, "cards" | "suspect"> & {
+            cards: UICard[];
+          });
+
+export type LocationArea<S extends StateType> =
   | {
       name: "PREPARE" | "FRAME/STEAL" | "SPY" | "TRADE";
       userFacingName: string;
-      card: DealtCard;
+      card: S extends "SERVER" ? Card : UICard & { face: "UP" };
     }
   | {
       name: "STASH";
       userFacingName: "Stash";
-      card: DealtCard;
-      stash: DealtCard[];
+      card: S extends "SERVER" ? Card : UICard & { face: "UP" };
+      stash: S extends "SERVER" ? Card[] : (UICard & { face: "DOWN" })[];
     }
   | {
       name: "COPS";
@@ -347,17 +358,16 @@ export type SubState =
       expectedAction: "STEAL_CHOOSE_PLAYER";
     };
 
-export type StartedGame = {
+export type StartedGame<S extends StateType> = {
   substate: SubState;
   id: string;
   activePlayer: number;
-  players: GoatPlayer[];
-  scapegoat: PlayerColor;
+  players: GoatPlayer<S>[];
   preparationTokens: 0 | 1 | 2;
-  locations: LocationArea[];
+  locations: LocationArea<S>[];
   playerInfos: PlayerInfo[];
   events: UserFacingGameEvent[];
-};
+} & (S extends "SERVER" ? { scapegoat: PlayerColor } : {});
 
 export type StartedState =
   | "ONGOING"
@@ -365,20 +375,26 @@ export type StartedState =
   | "PAUSED_FOR_FRAME_CHECK"
   | "FINISHED";
 
-export type GameInStartedState = Game & { state: StartedState };
+export type GameInStartedState<S extends StateType> = Game<S> & {
+  state: StartedState;
+};
 
-export type Game =
-  | (StartedGame & {
+export type Game<S extends StateType> =
+  | (StartedGame<S> & {
       state: "ONGOING";
     })
-  | (StartedGame & {
+  | (StartedGame<S> & {
       state: "PAUSED_FOR_FRAME_CHECK";
       frameCards: { playerId: string; playerCardIndex: number }[];
     })
-  | (StartedGame & {
+  | (StartedGame<S> & {
       state: "PAUSED_FOR_COPS_CHECK";
     })
-  | (StartedGame & { state: "FINISHED"; winnerPlayerIds: string[] })
+  | (StartedGame<S> & {
+      state: "FINISHED";
+      winnerPlayerIds: string[];
+      scapegoat: PlayerColor;
+    })
   | {
       state: "WAITING_FOR_PLAYERS";
       id: string;
@@ -405,7 +421,7 @@ export const createInitialPlayers = (
 };
 
 export const dealInitialHands = (
-  deck: DealtCard[],
+  deck: Card[],
   initialPlayers: InitialGoatPlayer[]
 ): DealtInGoatPlayer[] => {
   const handSize = deck.length / initialPlayers.length;
@@ -427,8 +443,8 @@ export const shuffle = <T>(arr: T[]) => {
 };
 
 export const createLocations = (
-  deck: DealtCard[]
-): [DealtCard[], LocationArea[]] => {
+  deck: Card[]
+): [Card[], LocationArea<"SERVER">[]] => {
   const [
     prepare,
     trade,
@@ -480,16 +496,15 @@ const STARTING_LOCATIONS_BY_PLAYER_COUNT: Record<number, LocationName[]> = {
 };
 
 export const placePlayersInLocations = (
-  players: DealtInGoatPlayer[],
-  locations: LocationArea[]
-): GoatPlayer[] => {
+  players: DealtInGoatPlayer[]
+): GoatPlayer<"SERVER">[] => {
   return players.map((pl, i) => ({
     ...pl,
     location: STARTING_LOCATIONS_BY_PLAYER_COUNT[players.length][i]
   }));
 };
 
-export const createGame = (playerInfos: PlayerInfo[] = []): Game => {
+export const createGame = (playerInfos: PlayerInfo[] = []): Game<"SERVER"> => {
   return {
     state: "WAITING_FOR_PLAYERS",
     id: Math.random().toString(36).slice(2),
@@ -497,7 +512,9 @@ export const createGame = (playerInfos: PlayerInfo[] = []): Game => {
   };
 };
 
-export const activateGame = (game: Game): Game & { state: "ONGOING" } => {
+export const activateGame = (
+  game: Game<"SERVER">
+): Game<"SERVER"> & { state: "ONGOING" } => {
   if (game.state !== "WAITING_FOR_PLAYERS") {
     throw Error(
       `Cannot activate game ${game.id} when its state is ${game.state}`
@@ -524,7 +541,7 @@ export const activateGame = (game: Game): Game & { state: "ONGOING" } => {
         return restriction.playerCount.includes(playerCount);
       }
     })
-  ).map((c) => ({ ...c, id: Math.random().toString(36).slice(2) }));
+  );
 
   const playerColors = shuffle(PLAYER_COLORS.slice(0, playerCount));
 
@@ -540,10 +557,7 @@ export const activateGame = (game: Game): Game & { state: "ONGOING" } => {
 
   const dealtInPlayers = dealInitialHands(deckAfterPublicDeal, initialPlayers);
 
-  const finalPlayers = placePlayersInLocations(
-    dealtInPlayers,
-    locations.filter((l) => l.name !== "COPS")
-  );
+  const finalPlayers = placePlayersInLocations(dealtInPlayers);
 
   return {
     ...game,
@@ -559,17 +573,17 @@ export const activateGame = (game: Game): Game & { state: "ONGOING" } => {
 };
 
 export const isExpectedAction = <T extends GameAction>(
-  game: Game,
+  game: Game<"SERVER">,
   action: T
-): game is Game & { substate: { expectedAction: T["action"] } } => {
+): game is Game<"SERVER"> & { substate: { expectedAction: T["action"] } } => {
   return "substate" in game && game.substate.expectedAction === action.action;
 };
 
 export const playTurn = (
-  game: Game,
+  game: Game<"SERVER">,
   playerId: string,
   action: GameAction
-): [boolean, Game] => {
+): [boolean, Game<"SERVER">] => {
   if (game.state !== "ONGOING") {
     console.error(
       "Invalid action by " + playerId + ", game not in ONGOING state"
@@ -585,7 +599,7 @@ export const playTurn = (
     console.error("Invalid action by " + playerId + ", " + reason);
     console.error(JSON.stringify(action, null, 2));
     console.error(JSON.stringify(game, null, 2));
-    return [false, game] as [boolean, Game];
+    return [false, game] as [boolean, Game<"SERVER">];
   };
 
   const activePlayer = getActivePlayer(game);
@@ -975,7 +989,7 @@ export const playTurn = (
 
     const stash = game.locations.find(
       (l) => l.name === "STASH"
-    )! as LocationArea & { name: "STASH" };
+    )! as LocationArea<"SERVER"> & { name: "STASH" };
 
     const stashCard = stash.stash[action.stashCardIndex];
 
@@ -1187,15 +1201,17 @@ export const playTurn = (
   return logAndFail("Something unexpected happened");
 };
 
-type AfterCopsCheckCallback = (game: Game & { state: "FINISHED" }) => void;
+type AfterCopsCheckCallback = (
+  game: Game<"SERVER"> & { state: "FINISHED" }
+) => void;
 const COPS_CHECK_TIMEOUT = 3000;
 
 export const handleCopsCheck = (
-  game: Game & { state: "PAUSED_FOR_COPS_CHECK" },
+  game: Game<"SERVER"> & { state: "PAUSED_FOR_COPS_CHECK" },
   callback: AfterCopsCheckCallback
 ) => {
   setTimeout(() => {
-    const finishedGame: Game = {
+    const finishedGame: Game<"SERVER"> = {
       ...game,
       state: "FINISHED",
       events: [...game.events, { event: "COPS_CALLED", ts: Date.now() }],
@@ -1208,11 +1224,13 @@ export const handleCopsCheck = (
   }, COPS_CHECK_TIMEOUT);
 };
 
-type FrameCallback = (game: Game & { state: "FINISHED" | "ONGOING" }) => void;
+type FrameCallback = (
+  game: Game<"SERVER"> & { state: "FINISHED" | "ONGOING" }
+) => void;
 const FRAME_CHECK_TIMEOUT = 6000;
 
 export const handleFrameCheck = (
-  game: Game & { state: "PAUSED_FOR_FRAME_CHECK" },
+  game: Game<"SERVER"> & { state: "PAUSED_FOR_FRAME_CHECK" },
   callback: FrameCallback
 ) => {
   const chosenCards = game.frameCards.map(({ playerId, playerCardIndex }) => {
@@ -1259,4 +1277,195 @@ export const handleFrameCheck = (
       });
     }
   }, FRAME_CHECK_TIMEOUT);
+};
+
+export const stripSecretInfoFromGame = (
+  playerId: string,
+  game: Game<"SERVER">
+): Game<"UI"> => {
+  if (game.state === "WAITING_FOR_PLAYERS") return game;
+
+  const player = game.players.find((p) => p.playerInfo.id === playerId);
+  const playerWithTurn = getActivePlayer(game);
+  const isActivePlayer = player === playerWithTurn;
+
+  switch (game.state) {
+    case "FINISHED": {
+      return {
+        state: "FINISHED",
+        id: game.id,
+        winnerPlayerIds: game.winnerPlayerIds,
+        substate: game.substate,
+        activePlayer: game.activePlayer,
+        scapegoat: game.scapegoat,
+        events: game.events,
+        preparationTokens: game.preparationTokens,
+        playerInfos: game.playerInfos,
+        locations: game.locations.map((l) => {
+          if (!("card" in l)) return l;
+          if (!("stash" in l))
+            return {
+              ...l,
+              card: { face: "UP", card: l.card }
+            };
+
+          return {
+            ...l,
+            card: { face: "UP", card: l.card },
+            stash: l.stash.map(() => ({ face: "DOWN" }))
+          };
+        }),
+        players: game.players.map((p) => {
+          return {
+            ...p,
+            me: p === player,
+            cards: p.cards.map((card) => ({ face: "UP", card }))
+          };
+        })
+      };
+    }
+    case "PAUSED_FOR_COPS_CHECK": {
+      return {
+        state: "PAUSED_FOR_COPS_CHECK",
+        id: game.id,
+        substate: game.substate,
+        activePlayer: game.activePlayer,
+        events: game.events,
+        preparationTokens: game.preparationTokens,
+        playerInfos: game.playerInfos,
+        locations: game.locations.map((l) => {
+          if (!("card" in l)) return l;
+          if (!("stash" in l))
+            return {
+              ...l,
+              card: { face: "UP", card: l.card }
+            };
+
+          return {
+            ...l,
+            card: { face: "UP", card: l.card },
+            stash: l.stash.map(() => ({ face: "DOWN" }))
+          };
+        }),
+        players: game.players.map((p) => {
+          if (p === player) {
+            return {
+              ...p,
+              me: true,
+              cards: p.cards.map((card) => ({ face: "UP", card }))
+            };
+          } else {
+            return {
+              color: p.color,
+              playerInfo: p.playerInfo,
+              preparationTokens: p.preparationTokens,
+              location: p.location,
+              me: false,
+              cards: p.cards.map(() => ({ face: "DOWN" }))
+            };
+          }
+        })
+      };
+    }
+    case "PAUSED_FOR_FRAME_CHECK": {
+      return {
+        state: "PAUSED_FOR_FRAME_CHECK",
+        frameCards: game.frameCards,
+        id: game.id,
+        substate: game.substate,
+        activePlayer: game.activePlayer,
+        events: game.events,
+        preparationTokens: game.preparationTokens,
+        playerInfos: game.playerInfos,
+        locations: game.locations.map((l) => {
+          if (!("card" in l)) return l;
+          if (!("stash" in l))
+            return {
+              ...l,
+              card: { face: "UP", card: l.card }
+            };
+
+          return {
+            ...l,
+            card: { face: "UP", card: l.card },
+            stash: l.stash.map(() => ({ face: "DOWN" }))
+          };
+        }),
+        players: game.players.map((p) => {
+          if (p === player) {
+            return {
+              ...p,
+              me: true,
+              cards: p.cards.map((card) => ({ face: "UP", card }))
+            };
+          } else {
+            return {
+              color: p.color,
+              playerInfo: p.playerInfo,
+              preparationTokens: p.preparationTokens,
+              location: p.location,
+              me: false,
+              cards: p.cards.map((card, i) =>
+                game.frameCards.some(
+                  (fc) =>
+                    fc.playerId === p.playerInfo.id && i === fc.playerCardIndex
+                )
+                  ? { face: "UP", card }
+                  : { face: "DOWN" }
+              )
+            };
+          }
+        })
+      };
+    }
+    case "ONGOING": {
+      return {
+        state: "ONGOING",
+        id: game.id,
+        substate: game.substate,
+        activePlayer: game.activePlayer,
+        events: game.events,
+        preparationTokens: game.preparationTokens,
+        playerInfos: game.playerInfos,
+        locations: game.locations.map((l) => {
+          if (!("card" in l)) return l;
+          if (!("stash" in l))
+            return {
+              ...l,
+              card: { face: "UP", card: l.card }
+            };
+
+          return {
+            ...l,
+            card: { face: "UP", card: l.card },
+            stash: l.stash.map(() => ({ face: "DOWN" }))
+          };
+        }),
+        players: game.players.map((p) => {
+          if (p === player) {
+            return {
+              ...p,
+              me: true,
+              cards: p.cards.map((card) => ({ face: "UP", card }))
+            };
+          } else {
+            return {
+              color: p.color,
+              playerInfo: p.playerInfo,
+              preparationTokens: p.preparationTokens,
+              location: p.location,
+              me: false,
+              cards: p.cards.map((card, i) =>
+                game.substate.expectedAction === "SPY_ON_PLAYER_CONFIRM" &&
+                isActivePlayer &&
+                game.substate.otherPlayerId === p.playerInfo.id
+                  ? { face: "UP", card }
+                  : { face: "DOWN" }
+              )
+            };
+          }
+        })
+      };
+    }
+  }
 };

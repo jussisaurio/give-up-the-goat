@@ -1,18 +1,10 @@
-import { Game, GameAction, DealtCard, GameInStartedState } from "./game";
+import { Game, GameAction, Card, GameInStartedState } from "./game";
 
-export type GameActionEvent =
-  | {
-      type: "GAME_TICK";
-      code: string;
-      game: GameInStartedState;
-    }
-  | {
-      type: "SPY_HAND";
-      code: string;
-      game: GameInStartedState;
-      otherPlayerId: string;
-      hand: DealtCard[];
-    };
+export type GameActionEvent = {
+  type: "GAME_TICK";
+  code: string;
+  game: GameInStartedState<"UI">;
+};
 
 export type ClientEvent =
   | { type: "CHANGE_NICKNAME"; nickname: string }
@@ -38,12 +30,10 @@ export type ClientEvent =
       payload: GameAction;
     };
 
-export type GameActionEventWithCode = GameActionEvent & { code: string };
-
 export type ServerEvent =
   | {
       type: "GAME_JOINED";
-      payload: { game: Game; code: string; nickname: string };
+      payload: { game: Game<"UI">; code: string; nickname: string };
     }
   | {
       type: "GAME_CREATED";
@@ -51,12 +41,15 @@ export type ServerEvent =
         code: string;
       };
     }
-  | { type: "GAME_STARTED"; payload: { code: string; game: Game } }
+  | {
+      type: "GAME_STARTED";
+      payload: { code: string; game: GameInStartedState<"UI"> };
+    }
   | {
       type: "ASSIGN_NICKNAME";
       payload: { nickname: string };
     }
   | {
       type: "GAME_ACTION_EVENT";
-      payload: GameActionEventWithCode;
+      payload: GameActionEvent;
     };

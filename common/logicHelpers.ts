@@ -1,8 +1,8 @@
-import { GameInStartedState, GoatPlayer } from "./game";
+import { GameInStartedState, GoatPlayer, StateType } from "./game";
 
-export const isChoosingCard = (
-  player: GoatPlayer,
-  game: GameInStartedState
+export const isChoosingCard = <S extends StateType>(
+  player: GoatPlayer<S>,
+  game: GameInStartedState<S>
 ) => {
   const substate = game.substate;
   if (substate.expectedAction === "TRADE_CHOOSE_CARD") {
@@ -36,9 +36,9 @@ export const isChoosingCard = (
   return false;
 };
 
-export const playerCanGoToTheCops = (
-  player: GoatPlayer,
-  game: GameInStartedState
+export const playerCanGoToTheCops = <S extends StateType>(
+  player: GoatPlayer<S>,
+  game: GameInStartedState<S>
 ) => {
   if (game.state !== "ONGOING") return false;
 
@@ -54,5 +54,17 @@ export const playerCanGoToTheCops = (
   return iAmChoosingLocation || isSixPlayerGameAndTurnIsThreeToMyLeft;
 };
 
-export const getActivePlayer = (game: GameInStartedState) =>
-  game.players.find((p, i) => i === game.activePlayer)!;
+export const getActivePlayer = <S extends StateType>(
+  game: GameInStartedState<S>
+) => game.players.find((p, i) => i === game.activePlayer)!;
+
+export const getMe = (
+  game: GameInStartedState<"UI">
+): GoatPlayer<"UI"> & { me: true } => {
+  for (const player of game.players) {
+    if (player.me) {
+      return player;
+    }
+  }
+  throw Error("'Me' should always be found in player list");
+};

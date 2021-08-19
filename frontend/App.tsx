@@ -9,8 +9,6 @@ import {
 } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
 import {
-  Card,
-  DealtCard,
   Game,
   GameAction,
   GameInStartedState,
@@ -20,7 +18,7 @@ import {
 } from "../common/game";
 import "./App.css";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
-import { GameActionEventWithCode, ServerEvent } from "../common/eventTypes";
+import { ServerEvent } from "../common/eventTypes";
 import { PlayingCard } from "./Card";
 import { HomeScreen } from "./HomeScreen";
 import { WaitGameStartScreen } from "./WaitGameStartScreen";
@@ -32,6 +30,7 @@ import {
 } from "./format";
 import {
   getActivePlayer,
+  getMe,
   isChoosingCard,
   playerCanGoToTheCops
 } from "../common/logicHelpers";
@@ -69,12 +68,11 @@ const PreparationToken = () => {
 };
 
 type GameScreenProps = {
-  game: Game | null;
+  game: Game<"UI"> | null;
   onStartGame: (e: React.MouseEvent) => void;
   onRemake: (e: React.MouseEvent) => void;
   onChangeNickname: (e: string) => void;
   nickname: string;
-  secretState: SecretState | null;
   dispatch: (e: GameAction) => void;
 };
 
@@ -83,7 +81,6 @@ const GameScreen = ({
   onStartGame,
   nickname,
   onChangeNickname,
-  secretState,
   onRemake,
   dispatch
 }: GameScreenProps) => {
@@ -116,11 +113,7 @@ const GameScreen = ({
   }
 
   const playerCount = game.players.length;
-  const me = game.players.find((p) => p.playerInfo.nickname === nickname);
-
-  if (!me) {
-    throw Error("Bug alert - user is not one of the players in the game");
-  }
+  const me = getMe(game);
 
   const meIndex = game.players.findIndex(
     (p) => p.playerInfo.nickname === nickname
@@ -143,7 +136,11 @@ const GameScreen = ({
     );
   }
 
-  function renderPlayer(player: GoatPlayer, game: Game, playerNumber: number) {
+  function renderPlayer(
+    player: GoatPlayer<"UI">,
+    game: Game<"UI">,
+    playerNumber: number
+  ) {
     if (game.state === "WAITING_FOR_PLAYERS") return null;
     const classN =
       "playerInfo" +
@@ -156,29 +153,7 @@ const GameScreen = ({
       player
     )}`;
 
-    const cards = (() => {
-      if (secretState?.type === "SPY_HAND") {
-        return player === secretState.player
-          ? secretState.hand.map((card) => ({ card, face: "UP" as const }))
-          : player.cards.map((card) => ({ card, face: "DOWN" as const }));
-      }
-
-      return player.cards.map((c, i) => {
-        if (
-          game.state === "PAUSED_FOR_FRAME_CHECK" &&
-          game.frameCards.some(
-            (fc) =>
-              fc.playerId === player.playerInfo.id && fc.playerCardIndex === i
-          )
-        ) {
-          return { card: c, face: "UP" as const };
-        }
-
-        return { card: c, face: "DOWN" as const };
-      });
-    })();
-
-    function onOpponentHandClick(game: GameInStartedState) {
+    function onOpponentHandClick(game: GameInStartedState<"UI">) {
       if (!me) {
         console.warn("User is not one of the players in the game?");
         return;
@@ -267,11 +242,11 @@ const GameScreen = ({
           onClick={() => onOpponentHandClick(game)}
           className="cardsContainer"
         >
-          {cards.map((card) => (
+          {player.cards.map((card, i) => (
             <PlayingCard
               className={highlightCards ? " highlightCard" : ""}
               onClick={noop}
-              key={card.card.id}
+              key={player.playerInfo.id + "-" + i}
               style={{ marginRight: "5px" }}
               card={card.face === "UP" ? card : { face: "DOWN" }}
             />
@@ -296,7 +271,7 @@ const GameScreen = ({
   const isMyTurn =
     game.players.findIndex((p) => p === me) === game.activePlayer;
 
-  const iHaveCardOfOwnColor = me.cards.some((card) => {
+  const iHaveCardOfOwnColor = me.cards.some(({ card }) => {
     const cardColors =
       "color" in card ? [card.color] : "colors" in card ? card.colors : [];
     return cardColors.includes(me.color) || card.type === "joker";
@@ -353,8 +328,8 @@ const GameScreen = ({
         <div className="cardsContainer">
           {me.cards.map((card, i) => {
             function onOwnCardClick(
-              game: GameInStartedState,
-              myself: GoatPlayer
+              game: GameInStartedState<"UI">,
+              myself: GoatPlayer<"UI"> & { me: true }
             ) {
               if (
                 game.state !== "ONGOING" ||
@@ -406,10 +381,10 @@ const GameScreen = ({
             }
 
             const cardColors =
-              "color" in card
-                ? [card.color]
-                : "colors" in card
-                ? card.colors
+              "color" in card.card
+                ? [card.card.color]
+                : "colors" in card.card
+                ? card.card.colors
                 : [];
 
             const disabled =
@@ -417,7 +392,7 @@ const GameScreen = ({
               isMyTurn &&
               iHaveCardOfOwnColor &&
               !cardColors.includes(me.color) &&
-              card.type !== "joker";
+              card.card.type !== "joker";
 
             const selectable =
               !disabled &&
@@ -429,9 +404,9 @@ const GameScreen = ({
                 onClick={() => onOwnCardClick(game, me)}
                 disabled={disabled}
                 selectable={selectable}
-                key={card.id}
+                key={me.playerInfo.id + i}
                 style={{ marginRight: "5px" }}
-                card={{ face: "UP", card }}
+                card={card}
               />
             );
           })}
@@ -467,7 +442,7 @@ const GameScreen = ({
       <div className="common">
         {game.locations
           .filter((l) => l.name !== "COPS")
-          .map((l) => {
+          .map((l, i) => {
             const myLocation = me.location === l.name;
             const myTurn =
               game.players.findIndex((p) => p === me) === game.activePlayer;
@@ -500,7 +475,10 @@ const GameScreen = ({
               return {};
             })();
 
-            function onLocationClick(game: Game, myself: GoatPlayer) {
+            function onLocationClick(
+              game: Game<"UI">,
+              myself: GoatPlayer<"UI">
+            ) {
               if (game.state !== "ONGOING") return;
               if (game.substate.expectedAction !== "GO_TO_LOCATION") return;
               const activePlayer = getActivePlayer(game);
@@ -514,8 +492,8 @@ const GameScreen = ({
             }
 
             function onStashCardClick(
-              game: Game,
-              myself: GoatPlayer,
+              game: Game<"UI">,
+              myself: GoatPlayer<"UI"> & { me: true },
               stashCardIndex: number
             ) {
               if (
@@ -553,9 +531,9 @@ const GameScreen = ({
                   {l.name !== "COPS" && (
                     <PlayingCard
                       onClick={noop}
-                      key={l.card.id}
+                      key={l.name + i}
                       className="locationDealtCard"
-                      card={{ face: "UP", card: l.card }}
+                      card={l.card}
                     />
                   )}
                   {l.name === "STASH" &&
@@ -577,7 +555,7 @@ const GameScreen = ({
                                 game.substate.expectedAction ===
                                   "STASH_CHOOSE_CARD"
                               }
-                              key={c.id}
+                              key={i}
                               className={stashCardClassName}
                               card={{ face: "DOWN" }}
                             />
@@ -667,12 +645,6 @@ const GameScreen = ({
   );
 };
 
-type SecretState = {
-  type: "SPY_HAND";
-  player: GoatPlayer;
-  hand: DealtCard[];
-};
-
 const SOUNDS = {
   COPS: new Audio("/assets/cops.mp3"),
   CARD: new Audio("/assets/card.mp3"),
@@ -690,11 +662,10 @@ const App = () => {
   const history = useHistory();
   const location = useLocation();
   const [nickname, setNickname] = useState("");
-  const [game, setGame] = useState<Game | null>(null);
-  const [secretState, setSecretState] = useState<SecretState | null>(null);
-  const [socket, setSocket] = useState<
-    Socket<DefaultEventsMap, DefaultEventsMap>
-  >(io());
+  const [game, setGame] = useState<Game<"UI"> | null>(null);
+  const [socket] = useState<Socket<DefaultEventsMap, DefaultEventsMap>>(
+    io({ transports: ["websocket"] })
+  );
 
   const lastEventTimestamp =
     game && "events" in game && game.events.length > 0
@@ -805,41 +776,8 @@ const App = () => {
     }
   }, [game?.state]);
 
-  function handleGameActionEvent(e: GameActionEventWithCode) {
-    const activeGame = e.game;
-    if (!activeGame) {
-      console.error("Got event for game not in progress....?");
-      return;
-    }
-
-    setGame(activeGame);
-
-    const activePlayer = activeGame.players.find(
-      (p, i) => i === activeGame.activePlayer
-    );
-
-    if (!activePlayer) {
-      throw Error("Bug alert - game doesnt have designated active player");
-    }
-
-    switch (e.type) {
-      case "SPY_HAND": {
-        const otherPlayer = activeGame.players.find(
-          (p) => p.playerInfo.id === e.otherPlayerId
-        );
-        if (!otherPlayer) {
-          throw Error("Bug alert - trying to spy on nonexistent player");
-        }
-        return setSecretState({
-          type: "SPY_HAND",
-          player: otherPlayer,
-          hand: e.hand
-        });
-      }
-      default: {
-        setSecretState(null);
-      }
-    }
+  function handleGameActionEvent(e: { game: Game<"UI"> }) {
+    setGame(e.game);
   }
 
   useEffect(() => {
@@ -856,10 +794,9 @@ const App = () => {
         SOUNDS.GOAT.play().catch(() => {});
         if (msg.payload.code !== codeFromURL) return;
         setGame(msg.payload.game);
-        setSecretState(null);
       } else if (msg.type === "GAME_ACTION_EVENT") {
         if (msg.payload.code !== codeFromURL) return;
-        handleGameActionEvent(msg.payload);
+        setGame(msg.payload.game);
       }
     };
 
@@ -915,10 +852,6 @@ const App = () => {
       code: codeFromURL,
       payload
     });
-
-    if (payload.action === "SPY_ON_PLAYER_CONFIRM") {
-      setSecretState(null);
-    }
   }
 
   function onRemake() {
@@ -953,7 +886,6 @@ const App = () => {
       </Route>
       <Route path="/game">
         <GameScreen
-          secretState={secretState}
           nickname={nickname}
           onChangeNickname={onChangeNickname}
           onStartGame={onStartGame}

@@ -1,7 +1,7 @@
 import express from "express";
 import * as http from "http";
 import * as path from "path";
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 import session from "express-session";
 import {
   activateGame,
@@ -9,7 +9,8 @@ import {
   Game,
   handleCopsCheck,
   handleFrameCheck,
-  playTurn
+  playTurn,
+  stripSecretInfoFromGame
 } from "../common/game";
 import { createRandomNickname } from "../common/nicknameCreator";
 import { ClientEvent, ServerEvent } from "../common/eventTypes";
@@ -36,8 +37,54 @@ io.use((socket, next) => {
 });
 
 // IN MEMORY STATE
-const games: Record<string, Game> = {};
+const games: Record<string, Game<"SERVER">> = {};
 const nicknames: Record<string, string> = {};
+const sessionToSockets: Record<string, Set<Socket>> = {};
+
+function addSocketToSession(sid: string, socket: Socket) {
+  if (!sessionToSockets[sid]) {
+    sessionToSockets[sid] = new Set();
+  }
+
+  sessionToSockets[sid].add(socket);
+}
+
+function removeSocketFromSession(sid: string, socket: Socket) {
+  if (!sessionToSockets[sid]) {
+    sessionToSockets[sid] = new Set();
+  }
+
+  sessionToSockets[sid].delete(socket);
+
+  if (sessionToSockets[sid].size === 0) {
+    delete sessionToSockets[sid];
+  }
+}
+
+function getSocketsBySession(sid: string): Set<Socket> {
+  return sessionToSockets[sid] ?? new Set();
+}
+
+function sendStrippedGameStateToEveryPlayerInGame(code: string) {
+  const game = games[code];
+  if (!game) {
+    return;
+  }
+  for (const player of game.playerInfos) {
+    const strippedState = stripSecretInfoFromGame(player.id, game);
+    const sockets = getSocketsBySession(player.id);
+    sockets.forEach((s) => {
+      s.emit("SERVER_EVENT", {
+        type: "GAME_ACTION_EVENT",
+        payload: {
+          type: "GAME_TICK",
+          code,
+          game: strippedState
+        }
+      });
+    });
+  }
+}
 
 io.on("connection", (socket) => {
   const request = socket.request as IncomingMessage & {
@@ -45,15 +92,17 @@ io.on("connection", (socket) => {
   };
   const uid = request.session.id;
 
+  addSocketToSession(uid, socket);
+
+  socket.on("disconnect", (reason) => {
+    removeSocketFromSession(uid, socket);
+  });
+
   nicknames[uid] = nicknames[uid] ?? createRandomNickname();
   socket.emit("SERVER_EVENT", {
     type: "ASSIGN_NICKNAME",
     payload: { nickname: nicknames[uid] }
   });
-
-  function broadcastGameEventToGame(gameCode: string, event: ServerEvent) {
-    io.in(gameCode).emit("SERVER_EVENT", event);
-  }
 
   function emitEventToUser(event: ServerEvent) {
     socket.emit("SERVER_EVENT", event);
@@ -64,6 +113,16 @@ io.on("connection", (socket) => {
   }
 
   socket.on("CLIENT_EVENT", (msg: ClientEvent) => {
+    // For some reason this leaks and disconnect events dont fire
+    console.log(
+      "Number of sessions with connected sockets: ",
+      Object.keys(sessionToSockets).length
+    );
+    console.log(
+      "Number of connected sockets: ",
+      Object.values(sessionToSockets).reduce((a, b) => a + b.size, 0)
+    );
+
     if (msg.type === "CHANGE_NICKNAME") {
       if (validateNickname(msg.nickname).ok) {
         nicknames[uid] = msg.nickname;
@@ -78,14 +137,7 @@ io.on("connection", (socket) => {
             if (pi.id !== uid) return pi;
             return { id: pi.id, nickname: msg.nickname };
           });
-          broadcastGameEventToGame(code, {
-            type: "GAME_JOINED",
-            payload: {
-              code,
-              game,
-              nickname: msg.nickname
-            }
-          });
+          sendStrippedGameStateToEveryPlayerInGame(code);
         });
         socket.emit("SERVER_EVENT", {
           type: "ASSIGN_NICKNAME",
@@ -99,18 +151,7 @@ io.on("connection", (socket) => {
         return emitErrorToUser("GAME_DOESNT_EXIST");
       } else if (game.playerInfos.some((pi) => pi.id === uid)) {
         // Already joined
-        // Add socket to Room corresponding to game code
-        socket.join(msg.payload.code);
-
-        // Broadcast message to room that user joined
-        broadcastGameEventToGame(msg.payload.code, {
-          type: "GAME_JOINED",
-          payload: {
-            code: msg.payload.code,
-            game: games[msg.payload.code],
-            nickname: msg.payload.nickname
-          }
-        });
+        sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
         return;
       } else if (game.state !== "WAITING_FOR_PLAYERS") {
         return emitErrorToUser("GAME_NOT_WAITING_FOR_PLAYERS");
@@ -127,18 +168,7 @@ io.on("connection", (socket) => {
         ]
       };
 
-      // Add socket to Room corresponding to game code
-      socket.join(msg.payload.code);
-
-      // Broadcast message to room that user joined
-      broadcastGameEventToGame(msg.payload.code, {
-        type: "GAME_JOINED",
-        payload: {
-          code: msg.payload.code,
-          game: games[msg.payload.code],
-          nickname: msg.payload.nickname
-        }
-      });
+      sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
     } else if (msg.type === "GAME_CREATE") {
       // Create code to be used in URL of game
       const code = createGameCode();
@@ -165,20 +195,7 @@ io.on("connection", (socket) => {
 
       games[code] = activatedGame;
 
-      // TODO strip other players private info like cards in hand from other players
-      broadcastGameEventToGame(code, {
-        type: "GAME_STARTED",
-        payload: { code, game: activatedGame }
-      });
-
-      return broadcastGameEventToGame(code, {
-        type: "GAME_ACTION_EVENT",
-        payload: {
-          type: "GAME_TICK",
-          code,
-          game: activatedGame
-        }
-      });
+      sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
     } else if (msg.type === "GAME_REMAKE") {
       const { code } = msg.payload;
       const game = games[msg.payload.code];
@@ -192,10 +209,7 @@ io.on("connection", (socket) => {
 
       const newGame = activateGame(createGame(game.playerInfos));
       games[msg.payload.code] = newGame;
-      broadcastGameEventToGame(code, {
-        type: "GAME_STARTED",
-        payload: { code, game: newGame }
-      });
+      sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
     } else if (msg.type === "GAME_ACTION") {
       const game = games[msg.code];
 
@@ -213,14 +227,7 @@ io.on("connection", (socket) => {
 
       games[msg.code] = updatedGame;
 
-      broadcastGameEventToGame(msg.code, {
-        type: "GAME_ACTION_EVENT",
-        payload: {
-          type: "GAME_TICK",
-          code: msg.code,
-          game: updatedGame
-        }
-      });
+      sendStrippedGameStateToEveryPlayerInGame(msg.code);
 
       switch (updatedGame.state) {
         case "FINISHED": {
@@ -231,47 +238,16 @@ io.on("connection", (socket) => {
         case "PAUSED_FOR_COPS_CHECK": {
           return handleCopsCheck(updatedGame, (finishedGame) => {
             games[msg.code] = finishedGame;
-            broadcastGameEventToGame(msg.code, {
-              type: "GAME_ACTION_EVENT",
-              payload: {
-                type: "GAME_TICK",
-                code: msg.code,
-                game: finishedGame
-              }
-            });
+            sendStrippedGameStateToEveryPlayerInGame(msg.code);
           });
         }
         case "PAUSED_FOR_FRAME_CHECK": {
           return handleFrameCheck(updatedGame, (gameAfterCheck) => {
             games[msg.code] = gameAfterCheck;
-            broadcastGameEventToGame(msg.code, {
-              type: "GAME_ACTION_EVENT",
-              payload: {
-                type: "GAME_TICK",
-                code: msg.code,
-                game: gameAfterCheck
-              }
-            });
+            sendStrippedGameStateToEveryPlayerInGame(msg.code);
           });
         }
         case "ONGOING": {
-          const substate = updatedGame.substate;
-
-          if (substate.expectedAction === "SPY_ON_PLAYER_CONFIRM") {
-            const otherPlayer = updatedGame.players.find(
-              (p) => p.playerInfo.id === substate.otherPlayerId
-            )!;
-            emitEventToUser({
-              type: "GAME_ACTION_EVENT",
-              payload: {
-                type: "SPY_HAND",
-                code: msg.code,
-                otherPlayerId: substate.otherPlayerId,
-                hand: otherPlayer.cards,
-                game: updatedGame
-              }
-            });
-          }
           return;
         }
       }

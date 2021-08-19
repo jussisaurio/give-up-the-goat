@@ -3,7 +3,7 @@ import { Game } from "../common/game";
 import { mapPlayerColorToUIColor } from "./format";
 
 type Props = {
-  game: Game & { state: "FINISHED" };
+  game: Game<"UI"> & { state: "FINISHED" };
   onRemake: (e: React.MouseEvent) => void;
 };
 
