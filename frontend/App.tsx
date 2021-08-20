@@ -788,14 +788,13 @@ const SOUNDS = {
   TICK: new Audio("/assets/tick.mp3")
 };
 
+const socket = io({ transports: ["websocket"] });
+
 const App = () => {
   const history = useHistory();
   const location = useLocation();
   const [nickname, setNickname] = useState("");
   const [game, setGame] = useState<Game<"UI"> | null>(null);
-  const [socket] = useState<Socket<DefaultEventsMap, DefaultEventsMap>>(
-    io({ transports: ["websocket"] })
-  );
 
   const lastEventTimestamp =
     game && "events" in game && game.events.length > 0
