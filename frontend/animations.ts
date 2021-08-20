@@ -207,8 +207,7 @@ export const getCardFlyTowardsLocationAnimation = (
       const playerEl = getPlayerCardEl(player, ev.playerCardIndex);
 
       if (locationCardEl && playerEl) {
-        const id = location.name.replace("/", "-");
-        return createMoveAnimationFromElements(playerEl, locationCardEl, id);
+        return createMoveAnimationFromElements(playerEl, locationCardEl);
       }
     }
   }
