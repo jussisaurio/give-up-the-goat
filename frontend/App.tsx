@@ -32,11 +32,17 @@ import {
   getActivePlayer,
   getMe,
   isChoosingCard,
+  isFrameCard,
   playerCanGoToTheCops
 } from "../common/logicHelpers";
 import { EndGameScreenContent } from "./EndGameScreen";
 import { Go } from "./Go";
 import { getSeatingDesignation } from "./seating";
+import {
+  getCardFlyTowardsLocationAnimation,
+  getCardFlyTowardsPlayerAnimation,
+  getCardFlyTowardsStashAnimation
+} from "./animations";
 
 const noop = () => {};
 
@@ -232,50 +238,67 @@ const GameScreen = ({
         {(player === playerWithTurn || isChoosing) && (
           <div className="loader"></div>
         )}
-        {iThinkThisPlayerIsTheScapegoat && (
-          <div
-            style={{
-              backgroundColor: mapPlayerColorToUIColor(player.color),
-              cursor: "pointer"
-            }}
-            title="I think this is the Scapegoat?"
-            onClick={() => SOUNDS.GOAT.play()}
-            className="scapegoatIcon"
-          >
-            <img
-              style={{ width: "75%", height: "auto" }}
-              src="/assets/Stylized-Goat-Line-Art.svg"
-            ></img>
-            ?
-          </div>
-        )}
         <div
           style={{ color: mapPlayerColorToUIColor(player.color) }}
           className={classN}
         >
           {playerNameText}
         </div>
-        <div>{playerActionText}</div>
+        <div className="smallerText">{playerActionText}</div>
         {iThinkThisPlayerIsTheScapegoat && (
-          <div className="scapegoatReassurance">
-            They're the scapegoat. Trust me.
-          </div>
+          <div className="smallerText">They're the scapegoat. Trust me.</div>
         )}
         <div
           onClick={() => onOpponentHandClick(game)}
           className="cardsContainer"
         >
-          {player.cards.map((card, i) => (
-            <PlayingCard
-              className={highlightCards ? " highlightCard" : ""}
-              onClick={noop}
-              key={player.playerInfo.id + "-" + i}
-              style={{ marginRight: "5px" }}
-              card={card.face === "UP" ? card : { face: "DOWN" }}
-            />
-          ))}
+          {Array(game.players.length > 4 ? 4 : 3)
+            .fill(null)
+            .map((_, i) => {
+              const card = player.cards[i];
+              if (card) {
+                const tradeAnimation = getCardFlyTowardsPlayerAnimation(
+                  game,
+                  player,
+                  i
+                );
+
+                const cardIsChosenFrameCard = isFrameCard(player, i, game);
+
+                const id = `player-${player.playerInfo.id}-slot-${i + 1}`;
+
+                return (
+                  <PlayingCard
+                    id={id}
+                    className={highlightCards ? " highlightCard" : ""}
+                    onClick={noop}
+                    key={player.playerInfo.id + "-" + i}
+                    style={{
+                      marginRight: "5px",
+                      ...(tradeAnimation && {
+                        animation: `${tradeAnimation.animationId} 500ms ease-out`
+                      }),
+                      ...(cardIsChosenFrameCard && {
+                        transform: "scale(2)",
+                        transition: "transform 200ms"
+                      })
+                    }}
+                    card={card.face === "UP" ? card : { face: "DOWN" }}
+                  />
+                );
+              } else
+                return (
+                  <div
+                    key={player.playerInfo.id + "-" + i}
+                    id={`player-${player.playerInfo.id}-slot-${i + 1}`}
+                    className="cardPlaceholder"
+                  />
+                );
+            })}
           {spyingThisPlayer && (
-            <button onClick={onSpyConfirm}>OK, got it</button>
+            <button className="spyConfirmButton" onClick={onSpyConfirm}>
+              OK, got it
+            </button>
           )}
         </div>
         {player.preparationTokens > 0 && (
@@ -341,7 +364,7 @@ const GameScreen = ({
             You are {formatNickname(me)}
           </div>
           <div>{formatPlayerActionText(game, me)}</div>.
-          <div className="scapegoatReassurance">
+          <div className="smallerText">
             You think the scapegoat is{" "}
             <span style={{ color: me.suspect }}>
               {formatNickname(
@@ -351,93 +374,132 @@ const GameScreen = ({
           </div>
         </div>
         <div className="cardsContainer">
-          {me.cards.map((card, i) => {
-            function onOwnCardClick(
-              game: GameInStartedState<"UI">,
-              myself: GoatPlayer<"UI"> & { me: true }
-            ) {
-              if (
-                game.state !== "ONGOING" ||
-                !(
-                  game.substate.expectedAction === "SWAP_EVIDENCE" ||
-                  game.substate.expectedAction === "TRADE_CHOOSE_CARD" ||
-                  game.substate.expectedAction === "STASH_RETURN_CARD" ||
-                  game.substate.expectedAction === "FRAME_CHOOSE_CARD"
-                )
-              )
-                return;
-              const activePlayer = getActivePlayer(game);
+          {Array(game.players.length > 4 ? 4 : 3)
+            .fill(null)
+            .map((_, i) => {
+              const card = me.cards[i];
+              if (!card) {
+                return (
+                  <div
+                    key={me.playerInfo.id + i}
+                    id={`player-${me.playerInfo.id}-slot-${i + 1}`}
+                    className="cardPlaceholder"
+                  />
+                );
+              }
 
-              if (game.substate.expectedAction === "SWAP_EVIDENCE") {
-                if (activePlayer.color !== myself.color) return;
-                return dispatch({
-                  action: "SWAP_EVIDENCE",
-                  playerCardIndex: i
-                });
-              } else if (game.substate.expectedAction === "TRADE_CHOOSE_CARD") {
+              const cardIsChosenFrameCard = isFrameCard(me, i, game);
+
+              const tradeAnimation = getCardFlyTowardsPlayerAnimation(
+                game,
+                me,
+                i
+              );
+
+              const id = `player-${me.playerInfo.id}-slot-${i + 1}`;
+
+              function onOwnCardClick(
+                game: GameInStartedState<"UI">,
+                myself: GoatPlayer<"UI"> & { me: true }
+              ) {
                 if (
-                  activePlayer.playerInfo.id === myself.playerInfo.id &&
-                  game.substate.mainPlayerCardIndex === null
-                ) {
-                  dispatch({
-                    action: "TRADE_CHOOSE_CARD",
+                  game.state !== "ONGOING" ||
+                  !(
+                    game.substate.expectedAction === "SWAP_EVIDENCE" ||
+                    game.substate.expectedAction === "TRADE_CHOOSE_CARD" ||
+                    game.substate.expectedAction === "STASH_RETURN_CARD" ||
+                    game.substate.expectedAction === "FRAME_CHOOSE_CARD"
+                  )
+                )
+                  return;
+                const activePlayer = getActivePlayer(game);
+
+                if (game.substate.expectedAction === "SWAP_EVIDENCE") {
+                  if (activePlayer.color !== myself.color) return;
+                  return dispatch({
+                    action: "SWAP_EVIDENCE",
                     playerCardIndex: i
                   });
                 } else if (
-                  game.substate.otherPlayerId === myself.playerInfo.id &&
-                  game.substate.otherPlayerCardIndex === null
+                  game.substate.expectedAction === "TRADE_CHOOSE_CARD"
+                ) {
+                  if (
+                    activePlayer.playerInfo.id === myself.playerInfo.id &&
+                    game.substate.mainPlayerCardIndex === null
+                  ) {
+                    dispatch({
+                      action: "TRADE_CHOOSE_CARD",
+                      playerCardIndex: i
+                    });
+                  } else if (
+                    game.substate.otherPlayerId === myself.playerInfo.id &&
+                    game.substate.otherPlayerCardIndex === null
+                  ) {
+                    dispatch({
+                      action: "TRADE_CHOOSE_CARD",
+                      playerCardIndex: i
+                    });
+                  }
+                } else if (
+                  game.substate.expectedAction === "STASH_RETURN_CARD"
                 ) {
                   dispatch({
-                    action: "TRADE_CHOOSE_CARD",
+                    action: "STASH_RETURN_CARD",
+                    playerCardIndex: i
+                  });
+                } else if (
+                  game.substate.expectedAction === "FRAME_CHOOSE_CARD"
+                ) {
+                  dispatch({
+                    action: "FRAME_CHOOSE_CARD",
                     playerCardIndex: i
                   });
                 }
-              } else if (game.substate.expectedAction === "STASH_RETURN_CARD") {
-                dispatch({
-                  action: "STASH_RETURN_CARD",
-                  playerCardIndex: i
-                });
-              } else if (game.substate.expectedAction === "FRAME_CHOOSE_CARD") {
-                dispatch({
-                  action: "FRAME_CHOOSE_CARD",
-                  playerCardIndex: i
-                });
               }
-            }
 
-            const cardColors =
-              "color" in card.card
-                ? [card.card.color]
-                : "colors" in card.card
-                ? card.card.colors
-                : [];
+              const cardColors =
+                "color" in card.card
+                  ? [card.card.color]
+                  : "colors" in card.card
+                  ? card.card.colors
+                  : [];
 
-            const disabled =
-              game.substate.expectedAction === "SWAP_EVIDENCE" &&
-              isMyTurn &&
-              iHaveCardOfOwnColor &&
-              !cardColors.includes(me.color) &&
-              card.card.type !== "joker";
+              const disabled =
+                game.substate.expectedAction === "SWAP_EVIDENCE" &&
+                isMyTurn &&
+                iHaveCardOfOwnColor &&
+                !cardColors.includes(me.color) &&
+                card.card.type !== "joker";
 
-            const selectable =
-              !disabled &&
-              isChoosingCard(me, game) &&
-              game.substate.expectedAction !== "STASH_CHOOSE_CARD";
-            return (
-              <PlayingCard
-                className={selectable ? "highlightCard" : ""}
-                onClick={() => onOwnCardClick(game, me)}
-                disabled={disabled}
-                selectable={selectable}
-                key={me.playerInfo.id + i}
-                style={{ marginRight: "5px" }}
-                card={card}
-              />
-            );
-          })}
+              const selectable =
+                !disabled &&
+                isChoosingCard(me, game) &&
+                game.substate.expectedAction !== "STASH_CHOOSE_CARD";
+              return (
+                <PlayingCard
+                  id={id}
+                  className={selectable ? "highlightCard" : ""}
+                  onClick={() => onOwnCardClick(game, me)}
+                  disabled={disabled}
+                  selectable={selectable}
+                  key={me.playerInfo.id + i}
+                  style={{
+                    marginRight: "5px",
+                    ...(tradeAnimation && {
+                      animation: `${tradeAnimation.animationId} 500ms ease-out`
+                    }),
+                    ...(cardIsChosenFrameCard && {
+                      transform: "scale(2)",
+                      transition: "transform 200ms"
+                    })
+                  }}
+                  card={card}
+                />
+              );
+            })}
         </div>
         {me.preparationTokens > 0 && (
-          <div className="preparationTokenContainer">
+          <div className="absolutePositionedPreparationTokenContainer">
             {Array(me.preparationTokens)
               .fill(null)
               .map((_, i) => {
@@ -544,6 +606,11 @@ const GameScreen = ({
               "locationCard" +
               (shouldHighlightLocation ? " highlightElement" : "");
 
+            const cardFlyAnimation = getCardFlyTowardsLocationAnimation(
+              game,
+              l
+            );
+
             return (
               <div
                 onClick={() => onLocationClick(game, me)}
@@ -555,10 +622,16 @@ const GameScreen = ({
                 <div className="locationContent">
                   {l.name !== "COPS" && (
                     <PlayingCard
+                      id={l.name + "-card"}
                       onClick={noop}
-                      key={l.name + i}
+                      key={l.name}
                       className="locationDealtCard"
                       card={l.card}
+                      style={{
+                        ...(cardFlyAnimation && {
+                          animation: `${cardFlyAnimation.animationId} 500ms ease-out`
+                        })
+                      }}
                     />
                   )}
                   {l.name === "STASH" &&
@@ -572,19 +645,30 @@ const GameScreen = ({
                         (selectable ? " highlightCard" : "");
                       return (
                         <div className="stashContainer">
-                          {l.stash.map((c, i) => (
-                            <PlayingCard
-                              onClick={() => onStashCardClick(game, me, i)}
-                              selectable={
-                                isMyTurn &&
-                                game.substate.expectedAction ===
-                                  "STASH_CHOOSE_CARD"
-                              }
-                              key={i}
-                              className={stashCardClassName}
-                              card={{ face: "DOWN" }}
-                            />
-                          ))}
+                          {l.stash.map((c, i) => {
+                            const cardFlyStashAnim =
+                              getCardFlyTowardsStashAnimation(game, i);
+
+                            return (
+                              <PlayingCard
+                                id={"stash-slot-" + (i + 1)}
+                                onClick={() => onStashCardClick(game, me, i)}
+                                selectable={
+                                  isMyTurn &&
+                                  game.substate.expectedAction ===
+                                    "STASH_CHOOSE_CARD"
+                                }
+                                key={"stash-" + i}
+                                className={stashCardClassName}
+                                card={{ face: "DOWN" }}
+                                style={{
+                                  ...(cardFlyStashAnim && {
+                                    animation: `cardfly-STASH 500ms ease-out`
+                                  })
+                                }}
+                              />
+                            );
+                          })}
                         </div>
                       );
                     })()}
@@ -602,7 +686,7 @@ const GameScreen = ({
                     </div>
                   )}
                   {l.name === "PREPARE" && game.preparationTokens > 0 && (
-                    <div className="preparationTokenContainer">
+                    <div className="absolutePositionedPreparationTokenContainer">
                       {Array(game.preparationTokens)
                         .fill(null)
                         .map((_, i) => {

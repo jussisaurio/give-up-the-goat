@@ -68,3 +68,17 @@ export const getMe = (
   }
   throw Error("'Me' should always be found in player list");
 };
+
+export const isFrameCard = (
+  player: GoatPlayer<"UI">,
+  cardIndex: number,
+  game: GameInStartedState<"UI">
+) => {
+  return (
+    "frameCards" in game &&
+    game.frameCards.some(
+      (fc) =>
+        fc.playerId === player.playerInfo.id && fc.playerCardIndex === cardIndex
+    )
+  );
+};

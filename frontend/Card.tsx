@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "../common/game";
 import { mapPlayerColorToUIColor } from "./format";
 
 const noop = () => {};
 
 type Props = {
+  id?: string;
   card: { face: "DOWN" } | { face: "UP"; card: Card };
   className?: string;
   style?: any;
@@ -14,6 +15,7 @@ type Props = {
 };
 
 const BaseCard: React.FC<Omit<Props, "card">> = ({
+  id,
   style,
   disabled,
   className,
@@ -23,13 +25,30 @@ const BaseCard: React.FC<Omit<Props, "card">> = ({
 }) => {
   const base = "card" + (className ? " " + className : "");
   const cls = !disabled && selectable ? "selectable " + base : base;
+
+  const [animation, setAnimation] = useState<string | undefined>(
+    style?.animation
+  );
+
+  useEffect(() => {
+    if (!style?.animation) {
+      setAnimation(undefined);
+    } else {
+      setAnimation(style.animation);
+      setTimeout(() => {
+        setAnimation(undefined);
+      }, 600);
+    }
+  }, [style?.animation]);
   return (
     <div
+      id={id}
       onClick={disabled ? noop : onClick}
       className={cls}
       style={{
         ...(disabled && { opacity: "50%", cursor: "initial" }),
-        ...style
+        ...style,
+        animation
       }}
     >
       {children}
@@ -38,6 +57,7 @@ const BaseCard: React.FC<Omit<Props, "card">> = ({
 };
 
 export const PlayingCard = ({
+  id,
   card,
   className,
   style,
@@ -48,6 +68,7 @@ export const PlayingCard = ({
   if (card.face === "DOWN") {
     return (
       <BaseCard
+        id={id}
         onClick={onClick}
         disabled={disabled}
         selectable={selectable}
@@ -68,6 +89,7 @@ export const PlayingCard = ({
     );
     return (
       <BaseCard
+        id={id}
         onClick={onClick}
         selectable={selectable}
         disabled={disabled}
@@ -86,6 +108,7 @@ export const PlayingCard = ({
   } else if (card.card.type === "single") {
     return (
       <BaseCard
+        id={id}
         onClick={onClick}
         selectable={selectable}
         disabled={disabled}
@@ -104,6 +127,7 @@ export const PlayingCard = ({
   } else if (card.card.type === "neutral") {
     return (
       <BaseCard
+        id={id}
         onClick={onClick}
         selectable={selectable}
         disabled={disabled}
@@ -123,6 +147,7 @@ export const PlayingCard = ({
 
   return (
     <BaseCard
+      id={id}
       onClick={onClick}
       selectable={selectable}
       disabled={disabled}
