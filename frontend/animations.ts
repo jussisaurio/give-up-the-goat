@@ -5,6 +5,20 @@ import {
   LocationName
 } from "../common/game";
 
+let dimensionsCache: WeakMap<Element, DOMRect> = new WeakMap();
+
+window.addEventListener("resize", () => {
+  dimensionsCache = new WeakMap();
+});
+
+const getClientRect = (el: Element) => {
+  if (!dimensionsCache.get(el)) {
+    dimensionsCache.set(el, el.getBoundingClientRect());
+  }
+
+  return dimensionsCache.get(el)!;
+};
+
 const getPlayerCardEl = (player: GoatPlayer<"UI">, cardIndex: number) => {
   const id = `player-${player.playerInfo.id}-slot-${cardIndex + 1}`;
   const el = document.getElementById(id);
@@ -18,8 +32,8 @@ const getStashCardEl = (i: number) =>
   document.getElementById("stash-slot-" + (i + 1));
 
 const createMoveAnimation = (source: Element, target: Element, id: string) => {
-  const el1Rect = source.getBoundingClientRect();
-  const el2Rect = target.getBoundingClientRect();
+  const el1Rect = getClientRect(source);
+  const el2Rect = getClientRect(target);
   const xDiff = el1Rect.x - el2Rect.x;
   const yDiff = el1Rect.y - el2Rect.y;
   const coordinateDiff = {
@@ -27,11 +41,10 @@ const createMoveAnimation = (source: Element, target: Element, id: string) => {
     yDiff
   };
 
-  if (coordinateDiff) {
-    const css = window.document.styleSheets[0];
-    const ruleIdx = css.cssRules.length;
-    css.insertRule(
-      `
+  const css = window.document.styleSheets[0];
+  const ruleIdx = css.cssRules.length;
+  css.insertRule(
+    `
           @keyframes cardfly-${id} {
             0%   { 
                 transform: translate(${coordinateDiff.xDiff}px, ${coordinateDiff.yDiff}px);
@@ -39,17 +52,14 @@ const createMoveAnimation = (source: Element, target: Element, id: string) => {
             }
             100% { transform: translate(0, 0) }
           }`,
-      ruleIdx
-    );
+    ruleIdx
+  );
 
-    setTimeout(() => {
-      css.removeRule(Math.min(ruleIdx, css.cssRules.length - 1));
-    }, 2000);
-  }
+  setTimeout(() => {
+    css.removeRule(Math.min(ruleIdx, css.cssRules.length - 1));
+  }, 2000);
 
-  return coordinateDiff
-    ? { ...coordinateDiff, animationId: `cardfly-${id}` }
-    : undefined;
+  return { ...coordinateDiff, animationId: `cardfly-${id}` };
 };
 
 export const getCardFlyTowardsPlayerAnimation = (
