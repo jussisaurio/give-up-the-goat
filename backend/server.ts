@@ -79,6 +79,19 @@ function sendStrippedGameStateToEveryPlayerInGame(code: string) {
     .catch(() => {});
 }
 
+// I have determined Socket.io has a memory leak and I have to deal with this shit manually
+// https://github.com/socketio/socket.io/issues/2427
+const TIMEOUT_MS = 20000;
+const socketManualDisconnectChecker: Record<string, NodeJS.Timeout> = {};
+
+setInterval(() => {
+  io.fetchSockets()
+    .then((sockets) => {
+      console.log("DEBUG - Number of connected sockets: " + sockets.length);
+    })
+    .catch(() => {});
+}, 10000);
+
 io.on("connection", (socket) => {
   const request = socket.request as IncomingMessage & {
     session: { id: string; save: () => any };
@@ -90,6 +103,19 @@ io.on("connection", (socket) => {
   // For some reason this leaks and disconnect events dont fire
   socket.on("disconnect", (reason) => {
     console.log("Disconnecting socket id " + socket.id + " - " + reason);
+  });
+
+  socketManualDisconnectChecker[socket.id] = setTimeout(() => {
+    socket.disconnect();
+    socket.removeAllListeners();
+  }, TIMEOUT_MS);
+
+  socket.on("BEAT", () => {
+    clearTimeout(socketManualDisconnectChecker[socket.id]);
+    socketManualDisconnectChecker[socket.id] = setTimeout(() => {
+      socket.disconnect();
+      socket.removeAllListeners();
+    }, TIMEOUT_MS);
   });
 
   nicknames[uid] = nicknames[uid] ?? createRandomNickname();

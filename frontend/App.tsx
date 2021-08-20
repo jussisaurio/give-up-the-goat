@@ -803,6 +803,16 @@ const App = () => {
       : 0;
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      socket.emit("BEAT");
+    }, 1000);
+
+    () => {
+      clearInterval(interval);
+    };
+  }, [socket]);
+
+  useEffect(() => {
     if (lastEventTimestamp === 0) {
       return;
     }
