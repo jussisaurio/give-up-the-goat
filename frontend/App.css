@@ -461,7 +461,7 @@ button {
 
 .darkOverlay {
   position: fixed;
-  z-index: 300;
+  z-index: 800;
   top: 0;
   left: 0;
   width: 100%;
@@ -487,7 +487,7 @@ button {
 
 .finishedContent {
   position: fixed;
-  z-index: 300;
+  z-index: 800;
   top: 0;
   left: 0;
   width: 100vw;
@@ -518,6 +518,7 @@ button {
   background-color: gold;
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
   margin: 0.1rem;
+  z-index: 600;
 }
 
 .turnAnimation {

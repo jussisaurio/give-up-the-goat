@@ -1,4 +1,8 @@
-import { getActivePlayer, playerCanGoToTheCops } from "./logicHelpers";
+import {
+  getActivePlayer,
+  playerCanGoToTheCops,
+  takePreparationToken
+} from "./logicHelpers";
 import { getRandomElement } from "./toolbox";
 
 export const PLAYER_COLORS = [
@@ -276,12 +280,19 @@ export type PlayerInfo = {
   nickname: string;
 };
 
+export type PreparationTokenCaptureState =
+  | []
+  | ["TOKEN-1"]
+  | ["TOKEN-2"]
+  | ["TOKEN-1", "TOKEN-2"]
+  | ["TOKEN-2", "TOKEN-1"];
+
 // tied to specific game
 export type InitialGoatPlayer = {
   playerInfo: PlayerInfo;
   color: PlayerColor;
   suspect: PlayerColor;
-  preparationTokens: number;
+  preparationTokens: PreparationTokenCaptureState;
 };
 
 export type DealtInGoatPlayer = InitialGoatPlayer & {
@@ -363,7 +374,7 @@ export type StartedGame<S extends StateType> = {
   id: string;
   activePlayer: number;
   players: GoatPlayer<S>[];
-  preparationTokens: 0 | 1 | 2;
+  preparationTokens: PreparationTokenCaptureState;
   locations: LocationArea<S>[];
   playerInfos: PlayerInfo[];
   events: UserFacingGameEvent[];
@@ -415,7 +426,7 @@ export const createInitialPlayers = (
         color === scapegoat
           ? getRandomElement(playerColors.filter((c) => c !== scapegoat))
           : scapegoat,
-      preparationTokens: 0
+      preparationTokens: []
     };
   });
 };
@@ -566,7 +577,7 @@ export const activateGame = (
     activePlayer: 0,
     players: finalPlayers,
     locations,
-    preparationTokens: 2,
+    preparationTokens: ["TOKEN-1", "TOKEN-2"],
     scapegoat,
     events: []
   };
@@ -664,7 +675,7 @@ export const playTurn = (
         ];
       }
       case "FRAME/STEAL": {
-        if (game.preparationTokens > 0) {
+        if (game.preparationTokens.length > 0) {
           return logAndFail(
             "Cannot move to FRAME/STEAL when there are still " +
               game.preparationTokens +
@@ -672,7 +683,7 @@ export const playTurn = (
           );
         }
 
-        if (activePlayer.preparationTokens > 0) {
+        if (activePlayer.preparationTokens.length > 0) {
           return [
             true,
             {
@@ -707,11 +718,16 @@ export const playTurn = (
         }
       }
       case "PREPARE": {
-        if (game.preparationTokens === 0) {
+        if (game.preparationTokens.length === 0) {
           return logAndFail(
             `Cannot move to PREPARE when there are no preparation tokens left`
           );
-        } else if (game.preparationTokens === 1) {
+        } else if (game.preparationTokens.length === 1) {
+          const take = takePreparationToken(
+            game.preparationTokens,
+            activePlayer.preparationTokens
+          );
+          if (!take.ok) return logAndFail(take.reason);
           return [
             true,
             {
@@ -721,7 +737,7 @@ export const playTurn = (
                 expectedAction: "SWAP_EVIDENCE",
                 location: "FRAME/STEAL"
               },
-              preparationTokens: 0,
+              preparationTokens: take.from,
               locations: game.locations.map((l) => {
                 if (l.name !== "PREPARE") return l;
                 return {
@@ -736,14 +752,17 @@ export const playTurn = (
                   ...p,
                   location: "FRAME/STEAL",
                   preparationTokens:
-                    p === activePlayer
-                      ? p.preparationTokens + 1
-                      : p.preparationTokens
+                    p === activePlayer ? take.to : p.preparationTokens
                 };
               })
             }
           ];
-        } else if (game.preparationTokens === 2) {
+        } else if (game.preparationTokens.length === 2) {
+          const take = takePreparationToken(
+            game.preparationTokens,
+            activePlayer.preparationTokens
+          );
+          if (!take.ok) return logAndFail(take.reason);
           return [
             true,
             {
@@ -753,13 +772,13 @@ export const playTurn = (
                 expectedAction: "SWAP_EVIDENCE",
                 location: "PREPARE"
               },
-              preparationTokens: 1,
+              preparationTokens: take.from,
               players: game.players.map((p) => {
                 if (p.playerInfo.id !== playerId) return p;
                 return {
                   ...p,
                   location: "PREPARE",
-                  preparationTokens: p.preparationTokens + 1
+                  preparationTokens: take.to
                 };
               })
             }
@@ -1131,12 +1150,18 @@ export const playTurn = (
     if (
       !otherPlayer ||
       otherPlayer.color === activePlayer.color ||
-      otherPlayer.preparationTokens === 0
+      otherPlayer.preparationTokens.length === 0
     ) {
       return logAndFail(
         "Player doesnt exist, or player trying to steal from self or a player with no tokens"
       );
     }
+
+    const take = takePreparationToken(
+      otherPlayer.preparationTokens,
+      activePlayer.preparationTokens
+    );
+    if (!take.ok) return logAndFail(take.reason);
 
     return [
       true,
@@ -1148,10 +1173,7 @@ export const playTurn = (
           if (p !== otherPlayer && p !== activePlayer) return p;
           return {
             ...p,
-            preparationTokens:
-              p === otherPlayer
-                ? p.preparationTokens - 1
-                : p.preparationTokens + 1
+            preparationTokens: p === otherPlayer ? take.from : take.to
           };
         })
       }

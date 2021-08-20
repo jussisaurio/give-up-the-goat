@@ -4,6 +4,7 @@ import {
   LocationArea,
   LocationName
 } from "../common/game";
+import { getActivePlayer } from "../common/logicHelpers";
 
 let dimensionsCache: WeakMap<Element, DOMRect> = new WeakMap();
 
@@ -11,19 +12,41 @@ window.addEventListener("resize", () => {
   dimensionsCache = new WeakMap();
 });
 
-const getClientRect = (el: Element) => {
-  if (!dimensionsCache.get(el)) {
+const getClientRect = (el: Element, force = false) => {
+  if (!dimensionsCache.get(el) || force) {
     dimensionsCache.set(el, el.getBoundingClientRect());
   }
 
   return dimensionsCache.get(el)!;
 };
 
+const getPreparationTokenEl = (token: "TOKEN-1" | "TOKEN-2") => {
+  const el = document.getElementById(token);
+  return el;
+};
+
+export function ensurePreparationTokenLocations(force = false) {
+  const t1 = getPreparationTokenEl("TOKEN-1");
+  const t2 = getPreparationTokenEl("TOKEN-2");
+  if (t1 && t2) {
+    getClientRect(t1, force);
+    getClientRect(t2, force);
+  }
+}
+
 const getPlayerCardEl = (player: GoatPlayer<"UI">, cardIndex: number) => {
   const id = `player-${player.playerInfo.id}-slot-${cardIndex + 1}`;
   const el = document.getElementById(id);
   return el;
 };
+
+const getPlayerAreaEl = (player: GoatPlayer<"UI">) => {
+  const id = "player-area-" + player.playerInfo.id;
+  return document.getElementById(id);
+};
+
+const getLocationAreaEl = (locationName: LocationName) =>
+  document.getElementById("location-" + locationName);
 
 const getLocationCardEl = (location: LocationName) =>
   document.getElementById(location + "-card");
@@ -37,27 +60,26 @@ export type GameAnimation = {
   timing: EffectTiming;
 };
 
-const createMoveAnimation = (
+const createMoveAnimationFromElements = (
   source: Element,
-  target: Element,
-  id: string
+  target: Element
 ): GameAnimation => {
   const el1Rect = getClientRect(source);
   const el2Rect = getClientRect(target);
-  const xDiff = el1Rect.x - el2Rect.x;
-  const yDiff = el1Rect.y - el2Rect.y;
-  const coordinateDiff = {
-    xDiff,
-    yDiff
-  };
 
+  return createMoveAnimationFromDOMRects(el1Rect, el2Rect);
+};
+
+const createMoveAnimationFromDOMRects = (source: DOMRect, target: DOMRect) => {
+  const xDiff = source.x - target.x;
+  const yDiff = source.y - target.y;
   return {
     uid: Math.random(),
     keyframes: [
       {
-        transform: `translateX(${Math.round(
-          coordinateDiff.xDiff
-        )}px) translateY(${Math.round(coordinateDiff.yDiff)}px)`,
+        transform: `translateX(${Math.round(xDiff)}px) translateY(${Math.round(
+          yDiff
+        )}px)`,
         boxShadow:
           "0 9px 18px rgba(0, 0, 0, 0.16), 0 9px 18px rgba(0, 0, 0, 0.23)"
       },
@@ -114,8 +136,7 @@ export const getCardFlyTowardsPlayerAnimation = (
           myTrade.playerCardIndex
         );
         if (oppEl && myEl) {
-          const id = `player-${player.playerInfo.id}-slot-${i + 1}`;
-          return createMoveAnimation(oppEl, myEl, id);
+          return createMoveAnimationFromElements(oppEl, myEl);
         }
       }
     }
@@ -133,8 +154,7 @@ export const getCardFlyTowardsPlayerAnimation = (
       const myEl = getPlayerCardEl(player, ev.playerCardIndex);
 
       if (locationCardEl && myEl) {
-        const id = `player-${player.playerInfo.id}-slot-${i + 1}`;
-        return createMoveAnimation(locationCardEl, myEl, id);
+        return createMoveAnimationFromElements(locationCardEl, myEl);
       }
     }
   } else if (game.substate.expectedAction === "STASH_RETURN_CARD") {
@@ -151,8 +171,7 @@ export const getCardFlyTowardsPlayerAnimation = (
       const myEl = getPlayerCardEl(player, i);
 
       if (locationCardEl && myEl) {
-        const id = `player-${player.playerInfo.id}-slot-${i + 1}`;
-        return createMoveAnimation(locationCardEl, myEl, id);
+        return createMoveAnimationFromElements(locationCardEl, myEl);
       }
     }
   }
@@ -189,7 +208,7 @@ export const getCardFlyTowardsLocationAnimation = (
 
       if (locationCardEl && playerEl) {
         const id = location.name.replace("/", "-");
-        return createMoveAnimation(playerEl, locationCardEl, id);
+        return createMoveAnimationFromElements(playerEl, locationCardEl, id);
       }
     }
   }
@@ -224,8 +243,49 @@ export const getCardFlyTowardsStashAnimation = (
 
       if (locationCardEl && playerEl) {
         const id = "STASH";
-        return createMoveAnimation(playerEl, locationCardEl, id);
+        return createMoveAnimationFromElements(playerEl, locationCardEl);
       }
+    }
+  }
+};
+
+export const getPreparationTokenFliesTowardsPlayerAnimation = (
+  game: GameInStartedState<"UI">,
+  player: GoatPlayer<"UI">
+) => {
+  if (game.events.length < 1) return;
+  if (game.substate.expectedAction !== "SWAP_EVIDENCE") return;
+  const activePlayer = getActivePlayer(game);
+  if (player !== activePlayer || player.preparationTokens.length === 0) return;
+  const [ev] = game.events.slice(-1);
+  if (!ev || !("action" in ev)) {
+    return;
+  }
+
+  if (
+    (player.location === "PREPARE" &&
+      ev.action === "GO_TO_LOCATION" &&
+      ev.location === "PREPARE") ||
+    (player.location === "FRAME/STEAL" &&
+      ev.action === "GO_TO_LOCATION" &&
+      ev.location === "PREPARE") ||
+    ev.action === "STEAL_CHOOSE_PLAYER"
+  ) {
+    const thiefPlayerEl = getPlayerAreaEl(player);
+    if (!thiefPlayerEl) return;
+
+    const otherPlayerOrLocationEl =
+      ev.action === "STEAL_CHOOSE_PLAYER"
+        ? getPlayerAreaEl(game.players.find((p) => p.color === ev.playerColor)!)
+        : getLocationAreaEl(ev.location);
+
+    if (!otherPlayerOrLocationEl) return;
+
+    const oldLocation = getClientRect(otherPlayerOrLocationEl);
+    const newLocation = getClientRect(thiefPlayerEl);
+
+    if (oldLocation && newLocation) {
+      return createMoveAnimationFromDOMRects(oldLocation, newLocation);
     }
   }
 };

@@ -1,4 +1,9 @@
-import { GameInStartedState, GoatPlayer, StateType } from "./game";
+import {
+  GameInStartedState,
+  GoatPlayer,
+  PreparationTokenCaptureState,
+  StateType
+} from "./game";
 
 export const isChoosingCard = <S extends StateType>(
   player: GoatPlayer<S>,
@@ -81,4 +86,51 @@ export const isFrameCard = (
         fc.playerId === player.playerInfo.id && fc.playerCardIndex === cardIndex
     )
   );
+};
+
+type TakePreparationTokenResult =
+  | { ok: false; reason: string }
+  | {
+      ok: true;
+      from: PreparationTokenCaptureState;
+      to: PreparationTokenCaptureState;
+    };
+
+export const takePreparationToken = (
+  from: PreparationTokenCaptureState,
+  to: PreparationTokenCaptureState
+): TakePreparationTokenResult => {
+  if (from.length === 0) {
+    return { ok: false, reason: "No tokens left" };
+  }
+
+  if (to.length === 2) {
+    return { ok: false, reason: "Already has both tokens" };
+  }
+
+  if (from.length === 1) {
+    const [token] = from;
+    return {
+      ok: true,
+      from: [],
+      to:
+        to.length === 0
+          ? [token]
+          : token === "TOKEN-1"
+          ? ["TOKEN-2", "TOKEN-1"]
+          : ["TOKEN-1", "TOKEN-2"]
+    };
+  }
+
+  const [tok1, tok2] = from;
+  return {
+    ok: true,
+    from: [tok1],
+    to:
+      to.length === 0
+        ? [tok2]
+        : tok2 === "TOKEN-2"
+        ? ["TOKEN-1", "TOKEN-2"]
+        : ["TOKEN-2", "TOKEN-1"]
+  };
 };

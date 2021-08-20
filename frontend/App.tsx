@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import {
   BrowserRouter as Router,
@@ -41,15 +41,17 @@ import { getSeatingDesignation } from "./seating";
 import {
   getCardFlyTowardsLocationAnimation,
   getCardFlyTowardsPlayerAnimation,
-  getCardFlyTowardsStashAnimation
+  getCardFlyTowardsStashAnimation,
+  getPreparationTokenFliesTowardsPlayerAnimation
 } from "./animations";
 
 const noop = () => {};
 
-type PlayerTokenProps = { backgroundColor: PlayerColor };
-const PlayerToken = ({ backgroundColor }: PlayerTokenProps) => {
+type PlayerTokenProps = { backgroundColor: PlayerColor; playerId: string };
+const PlayerToken = ({ backgroundColor, playerId }: PlayerTokenProps) => {
   return (
     <div
+      id={"playerToken-" + playerId}
       style={{ backgroundColor: mapPlayerColorToUIColor(backgroundColor) }}
       className="playerToken"
     >
@@ -69,8 +71,32 @@ function usePrevious<T>(value: T): T | undefined {
   return ref.current;
 }
 
-const PreparationToken = () => {
-  return <div className="preparationToken">P</div>;
+const PreparationToken = ({
+  token,
+  player,
+  game
+}: {
+  game?: GameInStartedState<"UI">;
+  player?: GoatPlayer<"UI">;
+  token: "TOKEN-1" | "TOKEN-2";
+}) => {
+  const animation =
+    game && player
+      ? getPreparationTokenFliesTowardsPlayerAnimation(game, player)
+      : undefined;
+
+  const ref = React.useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (ref.current && animation) {
+      ref.current.animate(animation.keyframes, animation.timing);
+    }
+  }, [ref.current, animation?.uid]);
+
+  return (
+    <div id={token} ref={ref} className={"preparationToken " + token}>
+      P
+    </div>
+  );
 };
 
 type GameScreenProps = {
@@ -183,7 +209,7 @@ const GameScreen = ({
         });
       } else if (
         game.substate.expectedAction === "STEAL_CHOOSE_PLAYER" &&
-        player.preparationTokens > 0
+        player.preparationTokens.length > 0
       ) {
         dispatch({
           action: "STEAL_CHOOSE_PLAYER",
@@ -229,6 +255,7 @@ const GameScreen = ({
 
     return (
       <div
+        id={"player-area-" + player.playerInfo.id}
         key={playerNumber}
         style={{
           border: `2px solid ${mapPlayerColorToUIColor(player.color)}`
@@ -299,13 +326,14 @@ const GameScreen = ({
             </button>
           )}
         </div>
-        {player.preparationTokens > 0 && (
+        {player.preparationTokens.length > 0 && (
           <div className="preparationTokenContainer">
-            {Array(player.preparationTokens)
-              .fill(null)
-              .map((_, i) => {
-                return <PreparationToken key={i} />;
-              })}
+            {player.preparationTokens.some((t) => t === "TOKEN-1") && (
+              <PreparationToken game={game} player={player} token={"TOKEN-1"} />
+            )}
+            {player.preparationTokens.some((t) => t === "TOKEN-2") && (
+              <PreparationToken game={game} player={player} token={"TOKEN-2"} />
+            )}
           </div>
         )}
       </div>
@@ -352,6 +380,7 @@ const GameScreen = ({
       className="container"
     >
       <div
+        id={"player-area-" + me.playerInfo.id}
         style={{
           border: `2px solid ${mapPlayerColorToUIColor(me.color)}`
         }}
@@ -494,13 +523,14 @@ const GameScreen = ({
               );
             })}
         </div>
-        {me.preparationTokens > 0 && (
+        {me.preparationTokens.length > 0 && (
           <div className="absolutePositionedPreparationTokenContainer">
-            {Array(me.preparationTokens)
-              .fill(null)
-              .map((_, i) => {
-                return <PreparationToken key={i} />;
-              })}
+            {me.preparationTokens.some((t) => t === "TOKEN-1") && (
+              <PreparationToken game={game} player={me} token={"TOKEN-1"} />
+            )}
+            {me.preparationTokens.some((t) => t === "TOKEN-2") && (
+              <PreparationToken game={game} player={me} token={"TOKEN-2"} />
+            )}
           </div>
         )}
       </div>
@@ -609,6 +639,7 @@ const GameScreen = ({
 
             return (
               <div
+                id={"location-" + l.name}
                 onClick={() => onLocationClick(game, me)}
                 key={l.name}
                 style={style}
@@ -667,19 +698,21 @@ const GameScreen = ({
                         .filter((p) => p.location === l.name)
                         .map((p) => (
                           <PlayerToken
+                            playerId={p.playerInfo.id}
                             key={p.playerInfo.id}
                             backgroundColor={p.color}
                           />
                         ))}
                     </div>
                   )}
-                  {l.name === "PREPARE" && game.preparationTokens > 0 && (
+                  {l.name === "PREPARE" && game.preparationTokens.length > 0 && (
                     <div className="absolutePositionedPreparationTokenContainer">
-                      {Array(game.preparationTokens)
-                        .fill(null)
-                        .map((_, i) => {
-                          return <PreparationToken key={i} />;
-                        })}
+                      {game.preparationTokens.some((t) => t === "TOKEN-1") && (
+                        <PreparationToken token={"TOKEN-1"} />
+                      )}
+                      {game.preparationTokens.some((t) => t === "TOKEN-2") && (
+                        <PreparationToken token={"TOKEN-2"} />
+                      )}
                     </div>
                   )}
                 </div>
@@ -770,7 +803,9 @@ const App = () => {
       : 0;
 
   useEffect(() => {
-    if (lastEventTimestamp === 0) return;
+    if (lastEventTimestamp === 0) {
+      return;
+    }
 
     if (!game || !("events" in game) || game.events.length === 0) return;
 
@@ -799,6 +834,10 @@ const App = () => {
           game.substate.expectedAction === "FRAME_CHOOSE_CARD"
         ) {
           SOUNDS.FRAME_ATTEMPT.play().catch(() => {});
+        } else if (
+          lastEvent.location === "FRAME/STEAL" &&
+          game.substate.expectedAction === "STEAL_CHOOSE_PLAYER"
+        ) {
         }
         return;
       }
