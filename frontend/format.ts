@@ -1,5 +1,6 @@
 import {
   Card,
+  FrameCard,
   GameInStartedState,
   GoatPlayer,
   LocationArea,
@@ -52,18 +53,14 @@ const splitCardToChunks = (card: UICard | undefined) => {
   }
 };
 
-const formatFrameCards = (
-  game: StartedGame<"UI">,
-  frameCards: { playerId: string; playerCardIndex: number }[]
-) => {
-  return frameCards.flatMap(({ playerId, playerCardIndex }) => {
+const formatFrameCards = (game: StartedGame<"UI">, frameCards: FrameCard[]) => {
+  return frameCards.flatMap(({ card, playerId }) => {
     const player = game.players.find((p) => p.playerInfo.id === playerId)!;
-    const playerCard = player.cards[playerCardIndex];
 
     return [
       { text: formatNickname(player), color: player.color },
       { text: " shows " },
-      ...splitCardToChunks(playerCard),
+      ...splitCardToChunks({ face: "UP", card }),
       { text: ". " }
     ];
   });

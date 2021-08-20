@@ -227,13 +227,19 @@ export type EnrichedGameAction =
   | GameAction
   | (GameAction & { action: "SWAP_EVIDENCE"; takenCard: Card });
 
+export type FrameCard = {
+  playerId: string;
+  playerCardIndex: number;
+  card: Card;
+};
+
 export type UserFacingGameEvent = { ts: number } & (
   | (EnrichedGameAction & {
       actionPlayerId: string;
     })
   | {
       event: "FRAME_FAILURE";
-      frameCards: { playerId: string; playerCardIndex: number }[];
+      frameCards: FrameCard[];
     }
   | { event: "FRAME_SUCCESS" }
   | { event: "COPS_CALLED" }
@@ -363,7 +369,7 @@ export type SubState =
     }
   | {
       expectedAction: "FRAME_CHOOSE_CARD";
-      cards: { playerId: string; playerCardIndex: number }[];
+      cards: Omit<FrameCard, "card">[];
     }
   | {
       expectedAction: "STEAL_CHOOSE_PLAYER";
@@ -396,7 +402,7 @@ export type Game<S extends StateType> =
     })
   | (StartedGame<S> & {
       state: "PAUSED_FOR_FRAME_CHECK";
-      frameCards: { playerId: string; playerCardIndex: number }[];
+      frameCards: FrameCard[];
     })
   | (StartedGame<S> & {
       state: "PAUSED_FOR_COPS_CHECK";
@@ -1191,6 +1197,14 @@ export const playTurn = (
       return logAndFail("Player has already chosen a card for Frame");
     }
 
+    const chosenCard = playerWhoSentTheEvent.cards[action.playerCardIndex];
+
+    if (!chosenCard) {
+      return logAndFail(
+        "Player chose a nonexistent card at index " + action.playerCardIndex
+      );
+    }
+
     const cards = [
       ...game.substate.cards,
       { playerId, playerCardIndex: action.playerCardIndex }
@@ -1212,9 +1226,17 @@ export const playTurn = (
       {
         ...game,
         events: addEventToGameEvents(game.events, action, playerId),
-        substate: { expectedAction: "FRAME_CHOOSE_CARD", cards },
+        substate: {
+          expectedAction: "FRAME_CHOOSE_CARD",
+          cards
+        },
         state: "PAUSED_FOR_FRAME_CHECK",
-        frameCards: cards
+        frameCards: cards.map((c) => ({
+          ...c,
+          card: game.players.find((p) => p.playerInfo.id === c.playerId)!.cards[
+            c.playerCardIndex
+          ]
+        }))
       }
     ];
   }
