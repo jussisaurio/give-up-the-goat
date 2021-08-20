@@ -40,7 +40,6 @@ io.use((socket, next) => {
 // IN MEMORY STATE
 const games: Record<string, Game<"SERVER">> = {};
 const nicknames: Record<string, string> = {};
-// I dunno why the fuck the sockets dont get disconnected, shooting at the wall with different things now...
 const socketToSession: WeakMap<
   Socket | RemoteSocket<DefaultEventsMap>,
   string
@@ -79,11 +78,6 @@ function sendStrippedGameStateToEveryPlayerInGame(code: string) {
     .catch(() => {});
 }
 
-// I have determined Socket.io has a memory leak and I have to deal with this shit manually
-// https://github.com/socketio/socket.io/issues/2427
-const TIMEOUT_MS = 20000;
-const socketManualDisconnectChecker: Record<string, NodeJS.Timeout> = {};
-
 setInterval(() => {
   io.fetchSockets()
     .then((sockets) => {
@@ -99,24 +93,6 @@ io.on("connection", (socket) => {
   const uid = request.session.id;
 
   addSocketToSession(uid, socket);
-
-  // For some reason this leaks and disconnect events dont fire
-  socket.on("disconnect", (reason) => {
-    console.log("Disconnecting socket id " + socket.id + " - " + reason);
-  });
-
-  socketManualDisconnectChecker[socket.id] = setTimeout(() => {
-    socket.disconnect();
-    socket.removeAllListeners();
-  }, TIMEOUT_MS);
-
-  socket.on("BEAT", () => {
-    clearTimeout(socketManualDisconnectChecker[socket.id]);
-    socketManualDisconnectChecker[socket.id] = setTimeout(() => {
-      socket.disconnect();
-      socket.removeAllListeners();
-    }, TIMEOUT_MS);
-  });
 
   nicknames[uid] = nicknames[uid] ?? createRandomNickname();
   socket.emit("SERVER_EVENT", {

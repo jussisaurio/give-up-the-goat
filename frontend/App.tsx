@@ -7,7 +7,7 @@ import {
   useLocation,
   useHistory
 } from "react-router-dom";
-import { io, Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 import {
   Game,
   GameAction,
@@ -17,7 +17,6 @@ import {
   PlayerCount
 } from "../common/game";
 import "./App.css";
-import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import { ServerEvent } from "../common/eventTypes";
 import { PlayingCard } from "./Card";
 import { HomeScreen } from "./HomeScreen";
@@ -800,16 +799,6 @@ const App = () => {
     game && "events" in game && game.events.length > 0
       ? game.events[game.events.length - 1].ts
       : 0;
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      socket.emit("BEAT");
-    }, 1000);
-
-    () => {
-      clearInterval(interval);
-    };
-  }, [socket]);
 
   useEffect(() => {
     if (lastEventTimestamp === 0) {
