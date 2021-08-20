@@ -307,6 +307,8 @@ select {
 
 .playerTokenContainer {
   display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .playerToken {
