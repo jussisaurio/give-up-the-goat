@@ -31,7 +31,17 @@ const getLocationCardEl = (location: LocationName) =>
 const getStashCardEl = (i: number) =>
   document.getElementById("stash-slot-" + (i + 1));
 
-const createMoveAnimation = (source: Element, target: Element, id: string) => {
+export type GameAnimation = {
+  uid: number;
+  keyframes: Keyframe[];
+  timing: EffectTiming;
+};
+
+const createMoveAnimation = (
+  source: Element,
+  target: Element,
+  id: string
+): GameAnimation => {
   const el1Rect = getClientRect(source);
   const el2Rect = getClientRect(target);
   const xDiff = el1Rect.x - el2Rect.x;
@@ -41,25 +51,27 @@ const createMoveAnimation = (source: Element, target: Element, id: string) => {
     yDiff
   };
 
-  const css = window.document.styleSheets[0];
-  const ruleIdx = css.cssRules.length;
-  css.insertRule(
-    `
-          @keyframes cardfly-${id} {
-            0%   { 
-                transform: translate(${coordinateDiff.xDiff}px, ${coordinateDiff.yDiff}px);
-                box-shadow: 0 9px 18px rgba(0, 0, 0, 0.16), 0 9px 18px rgba(0, 0, 0, 0.23);
-            }
-            100% { transform: translate(0, 0) }
-          }`,
-    ruleIdx
-  );
-
-  setTimeout(() => {
-    css.removeRule(Math.min(ruleIdx, css.cssRules.length - 1));
-  }, 2000);
-
-  return { ...coordinateDiff, animationId: `cardfly-${id}` };
+  return {
+    uid: Math.random(),
+    keyframes: [
+      {
+        transform: `translateX(${Math.round(
+          coordinateDiff.xDiff
+        )}px) translateY(${Math.round(coordinateDiff.yDiff)}px)`,
+        boxShadow:
+          "0 9px 18px rgba(0, 0, 0, 0.16), 0 9px 18px rgba(0, 0, 0, 0.23)"
+      },
+      {
+        offset: 1,
+        transform: "translate(0,0)"
+      }
+    ],
+    timing: {
+      duration: 400,
+      easing: "ease-out",
+      iterations: 1
+    }
+  };
 };
 
 export const getCardFlyTowardsPlayerAnimation = (

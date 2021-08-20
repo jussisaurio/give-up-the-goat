@@ -270,14 +270,12 @@ const GameScreen = ({
                 return (
                   <PlayingCard
                     id={id}
+                    animation={tradeAnimation}
                     className={highlightCards ? " highlightCard" : ""}
                     onClick={noop}
                     key={player.playerInfo.id + "-" + i}
                     style={{
                       marginRight: "5px",
-                      ...(tradeAnimation && {
-                        animation: `${tradeAnimation.animationId} 500ms ease-out`
-                      }),
                       ...(cardIsChosenFrameCard && {
                         transform: "scale(2)",
                         transition: "transform 200ms"
@@ -478,6 +476,7 @@ const GameScreen = ({
               return (
                 <PlayingCard
                   id={id}
+                  animation={tradeAnimation}
                   className={selectable ? "highlightCard" : ""}
                   onClick={() => onOwnCardClick(game, me)}
                   disabled={disabled}
@@ -485,9 +484,6 @@ const GameScreen = ({
                   key={me.playerInfo.id + i}
                   style={{
                     marginRight: "5px",
-                    ...(tradeAnimation && {
-                      animation: `${tradeAnimation.animationId} 500ms ease-out`
-                    }),
                     ...(cardIsChosenFrameCard && {
                       transform: "scale(2)",
                       transition: "transform 200ms"
@@ -623,15 +619,11 @@ const GameScreen = ({
                   {l.name !== "COPS" && (
                     <PlayingCard
                       id={l.name + "-card"}
+                      animation={cardFlyAnimation}
                       onClick={noop}
                       key={l.name}
                       className="locationDealtCard"
                       card={l.card}
-                      style={{
-                        ...(cardFlyAnimation && {
-                          animation: `${cardFlyAnimation.animationId} 500ms ease-out`
-                        })
-                      }}
                     />
                   )}
                   {l.name === "STASH" &&
@@ -652,6 +644,7 @@ const GameScreen = ({
                             return (
                               <PlayingCard
                                 id={"stash-slot-" + (i + 1)}
+                                animation={cardFlyStashAnim}
                                 onClick={() => onStashCardClick(game, me, i)}
                                 selectable={
                                   isMyTurn &&
@@ -661,11 +654,6 @@ const GameScreen = ({
                                 key={"stash-" + i}
                                 className={stashCardClassName}
                                 card={{ face: "DOWN" }}
-                                style={{
-                                  ...(cardFlyStashAnim && {
-                                    animation: `cardfly-STASH 500ms ease-out`
-                                  })
-                                }}
                               />
                             );
                           })}

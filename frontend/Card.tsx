@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useLayoutEffect } from "react";
 import { Card } from "../common/game";
 import { mapPlayerColorToUIColor } from "./format";
+import type { GameAnimation } from "./animations";
 
 const noop = () => {};
 
 type Props = {
   id?: string;
+  animation?: GameAnimation;
   card: { face: "DOWN" } | { face: "UP"; card: Card };
   className?: string;
   style?: any;
@@ -17,6 +19,7 @@ type Props = {
 const BaseCard: React.FC<Omit<Props, "card">> = ({
   id,
   style,
+  animation,
   disabled,
   className,
   selectable = false,
@@ -26,29 +29,23 @@ const BaseCard: React.FC<Omit<Props, "card">> = ({
   const base = "card" + (className ? " " + className : "");
   const cls = !disabled && selectable ? "selectable " + base : base;
 
-  const [animation, setAnimation] = useState<string | undefined>(
-    style?.animation
-  );
+  const elRef = React.useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!style?.animation) {
-      setAnimation(undefined);
-    } else {
-      setAnimation(style.animation);
-      setTimeout(() => {
-        setAnimation(undefined);
-      }, 600);
+  useLayoutEffect(() => {
+    if (elRef.current && animation) {
+      elRef.current.animate(animation.keyframes, animation.timing);
     }
-  }, [style?.animation]);
+  }, [elRef.current, animation?.uid]);
+
   return (
     <div
       id={id}
+      ref={elRef}
       onClick={disabled ? noop : onClick}
       className={cls}
       style={{
         ...(disabled && { opacity: "50%", cursor: "initial" }),
-        ...style,
-        animation
+        ...style
       }}
     >
       {children}
@@ -61,6 +58,7 @@ export const PlayingCard = ({
   card,
   className,
   style,
+  animation,
   selectable = false,
   disabled = false,
   onClick
@@ -70,6 +68,7 @@ export const PlayingCard = ({
       <BaseCard
         id={id}
         onClick={onClick}
+        animation={animation}
         disabled={disabled}
         selectable={selectable}
         className={className}
@@ -92,6 +91,7 @@ export const PlayingCard = ({
         id={id}
         onClick={onClick}
         selectable={selectable}
+        animation={animation}
         disabled={disabled}
         className={className}
         style={{
@@ -111,6 +111,7 @@ export const PlayingCard = ({
         id={id}
         onClick={onClick}
         selectable={selectable}
+        animation={animation}
         disabled={disabled}
         className={className}
         style={{
@@ -130,6 +131,7 @@ export const PlayingCard = ({
         id={id}
         onClick={onClick}
         selectable={selectable}
+        animation={animation}
         disabled={disabled}
         className={className}
         style={{
@@ -150,6 +152,7 @@ export const PlayingCard = ({
       id={id}
       onClick={onClick}
       selectable={selectable}
+      animation={animation}
       disabled={disabled}
       className={className}
       style={{
