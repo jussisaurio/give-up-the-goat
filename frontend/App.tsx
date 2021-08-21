@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import {
   BrowserRouter as Router,
@@ -13,7 +13,6 @@ import {
   GameAction,
   GameInStartedState,
   GoatPlayer,
-  PlayerColor,
   PlayerCount
 } from "../common/game";
 import "./App.css";
@@ -40,27 +39,12 @@ import { getSeatingDesignation } from "./seating";
 import {
   getCardFlyTowardsLocationAnimation,
   getCardFlyTowardsPlayerAnimation,
-  getCardFlyTowardsStashAnimation,
-  getPreparationTokenFliesTowardsPlayerAnimation
+  getCardFlyTowardsStashAnimation
 } from "./animations";
-
-const noop = () => {};
-
-type PlayerTokenProps = { backgroundColor: PlayerColor; playerId: string };
-const PlayerToken = ({ backgroundColor, playerId }: PlayerTokenProps) => {
-  return (
-    <div
-      id={"playerToken-" + playerId}
-      style={{ backgroundColor: mapPlayerColorToUIColor(backgroundColor) }}
-      className="playerToken"
-    >
-      <img
-        style={{ width: "75%", height: "auto" }}
-        src="/assets/Stylized-Goat-Line-Art.svg"
-      ></img>
-    </div>
-  );
-};
+import { PreparationToken } from "./PreparationToken";
+import { Opponent } from "./Opponent";
+import { noop } from "../common/toolbox";
+import { PlayerToken } from "./PlayerToken";
 
 function usePrevious<T>(value: T): T | undefined {
   const ref = React.useRef<T>();
@@ -69,34 +53,6 @@ function usePrevious<T>(value: T): T | undefined {
   });
   return ref.current;
 }
-
-const PreparationToken = ({
-  token,
-  player,
-  game
-}: {
-  game?: GameInStartedState<"UI">;
-  player?: GoatPlayer<"UI">;
-  token: "TOKEN-1" | "TOKEN-2";
-}) => {
-  const animation =
-    game && player
-      ? getPreparationTokenFliesTowardsPlayerAnimation(game, player)
-      : undefined;
-
-  const ref = React.useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (ref.current && animation) {
-      ref.current.animate(animation.keyframes, animation.timing);
-    }
-  }, [ref.current, animation?.uid]);
-
-  return (
-    <div id={token} ref={ref} className={"preparationToken " + token}>
-      P
-    </div>
-  );
-};
 
 type GameScreenProps = {
   game: Game<"UI"> | null;
@@ -159,185 +115,50 @@ const GameScreen = ({
 
   const playerWithTurn = game.players.find((p, i) => i === game.activePlayer);
 
-  function renderEmptyPlayer(playerNumber: number) {
+  const renderEmptyPlayer = (playerNumber: number) => {
     return (
       <div key={playerNumber} className={`player-area player-${playerNumber}`}>
         <small style={{ color: "grey" }}>(empty seat)</small>
       </div>
     );
-  }
+  };
 
-  function renderPlayer(
-    player: GoatPlayer<"UI">,
-    game: Game<"UI">,
-    playerNumber: number
-  ) {
-    if (game.state === "WAITING_FOR_PLAYERS") return null;
-    const classN =
-      "playerInfo" +
-      (player === playerWithTurn || isChoosingCard(player, game)
-        ? " turnAnimation"
-        : "");
-
-    const playerNameText = formatNickname(player);
-    const playerActionText = formatPlayerActionText(game, player);
-
-    function onOpponentHandClick(game: GameInStartedState<"UI">) {
-      if (!me) {
-        console.warn("User is not one of the players in the game?");
-        return;
-      }
-      if (
-        game.substate.expectedAction !== "SPY_ON_PLAYER" &&
-        game.substate.expectedAction !== "TRADE_CHOOSE_PLAYER" &&
-        game.substate.expectedAction !== "STEAL_CHOOSE_PLAYER"
-      )
-        return;
-      const activePlayer = getActivePlayer(game);
-      if (activePlayer.color !== me.color || player.color === me.color) return;
-
-      if (game.substate.expectedAction === "SPY_ON_PLAYER") {
-        dispatch({
-          action: "SPY_ON_PLAYER",
-          playerColor: player.color
-        });
-      } else if (game.substate.expectedAction === "TRADE_CHOOSE_PLAYER") {
-        dispatch({
-          action: "TRADE_CHOOSE_PLAYER",
-          playerColor: player.color
-        });
-      } else if (
-        game.substate.expectedAction === "STEAL_CHOOSE_PLAYER" &&
-        player.preparationTokens.length > 0
-      ) {
-        dispatch({
-          action: "STEAL_CHOOSE_PLAYER",
-          playerColor: player.color
-        });
-      }
+  const onOpponentHandClick = (player: GoatPlayer<"UI">) => {
+    if (
+      game.substate.expectedAction !== "SPY_ON_PLAYER" &&
+      game.substate.expectedAction !== "TRADE_CHOOSE_PLAYER" &&
+      game.substate.expectedAction !== "STEAL_CHOOSE_PLAYER"
+    ) {
+      return;
     }
+    const activePlayer = getActivePlayer(game);
+    if (activePlayer.color !== me.color || player.color === me.color) return;
 
-    const isActivePlayer =
-      game.state === "ONGOING" &&
-      game.players.find((p, i) => i === game.activePlayer)! === me;
-    const spyingThisPlayer =
-      game.state === "ONGOING" &&
-      game.substate.expectedAction === "SPY_ON_PLAYER_CONFIRM" &&
-      isActivePlayer &&
-      game.substate.otherPlayerId === player.playerInfo.id;
-
-    function onSpyConfirm() {
-      const isActivePlayer =
-        game.state === "ONGOING" &&
-        game.players.find((p, i) => i === game.activePlayer)! === me;
-      const spying =
-        game.state === "ONGOING" &&
-        game.substate.expectedAction === "SPY_ON_PLAYER_CONFIRM" &&
-        isActivePlayer;
-
-      if (!spying) return;
-
+    if (game.substate.expectedAction === "SPY_ON_PLAYER") {
       dispatch({
-        action: "SPY_ON_PLAYER_CONFIRM"
+        action: "SPY_ON_PLAYER",
+        playerColor: player.color
+      });
+    } else if (game.substate.expectedAction === "TRADE_CHOOSE_PLAYER") {
+      dispatch({
+        action: "TRADE_CHOOSE_PLAYER",
+        playerColor: player.color
+      });
+    } else if (
+      game.substate.expectedAction === "STEAL_CHOOSE_PLAYER" &&
+      player.preparationTokens.length > 0
+    ) {
+      dispatch({
+        action: "STEAL_CHOOSE_PLAYER",
+        playerColor: player.color
       });
     }
+  };
 
-    const isChoosing = isChoosingCard(player, game);
-
-    const iThinkThisPlayerIsTheScapegoat = me.suspect === player.color;
-
-    const highlightCards =
-      isMyTurn &&
-      (game.substate.expectedAction === "SPY_ON_PLAYER" ||
-        game.substate.expectedAction === "STEAL_CHOOSE_PLAYER" ||
-        game.substate.expectedAction === "TRADE_CHOOSE_PLAYER");
-
-    return (
-      <div
-        id={"player-area-" + player.playerInfo.id}
-        key={playerNumber}
-        style={{
-          border: `2px solid ${mapPlayerColorToUIColor(player.color)}`
-        }}
-        className={`player-area player-${playerNumber}`}
-      >
-        {(player === playerWithTurn || isChoosing) && (
-          <div className="loader"></div>
-        )}
-        <div
-          style={{ color: mapPlayerColorToUIColor(player.color) }}
-          className={classN}
-        >
-          {playerNameText}
-        </div>
-        <div className="smallerText">{playerActionText}</div>
-        {iThinkThisPlayerIsTheScapegoat && (
-          <div className="smallerText">They're the scapegoat. Trust me.</div>
-        )}
-        <div
-          onClick={() => onOpponentHandClick(game)}
-          className="cardsContainer"
-        >
-          {Array(game.players.length > 4 ? 4 : 3)
-            .fill(null)
-            .map((_, i) => {
-              const card = player.cards[i];
-              if (card) {
-                const tradeAnimation = getCardFlyTowardsPlayerAnimation(
-                  game,
-                  player,
-                  i
-                );
-
-                const cardIsChosenFrameCard = isFrameCard(player, i, game);
-
-                const id = `player-${player.playerInfo.id}-slot-${i + 1}`;
-
-                return (
-                  <PlayingCard
-                    id={id}
-                    animation={tradeAnimation}
-                    className={highlightCards ? " highlightCard" : ""}
-                    onClick={noop}
-                    key={player.playerInfo.id + "-" + i}
-                    style={{
-                      marginRight: "5px",
-                      ...(cardIsChosenFrameCard && {
-                        transform: "scale(2)",
-                        transition: "transform 200ms"
-                      })
-                    }}
-                    card={card.face === "UP" ? card : { face: "DOWN" }}
-                  />
-                );
-              } else
-                return (
-                  <div
-                    key={player.playerInfo.id + "-" + i}
-                    id={`player-${player.playerInfo.id}-slot-${i + 1}`}
-                    className="cardPlaceholder"
-                  />
-                );
-            })}
-          {spyingThisPlayer && (
-            <button className="spyConfirmButton" onClick={onSpyConfirm}>
-              OK, got it
-            </button>
-          )}
-        </div>
-        {player.preparationTokens.length > 0 && (
-          <div className="preparationTokenContainer">
-            {player.preparationTokens.some((t) => t === "TOKEN-1") && (
-              <PreparationToken game={game} player={player} token={"TOKEN-1"} />
-            )}
-            {player.preparationTokens.some((t) => t === "TOKEN-2") && (
-              <PreparationToken game={game} player={player} token={"TOKEN-2"} />
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
+  const onSpyConfirm = () =>
+    dispatch({
+      action: "SPY_ON_PLAYER_CONFIRM"
+    });
 
   const isMyTurn =
     game.players.findIndex((p) => p === me) === game.activePlayer;
@@ -348,20 +169,11 @@ const GameScreen = ({
     return cardColors.includes(me.color) || card.type === "joker";
   });
 
-  function onCopsClick() {
+  const onCopsClick = () =>
     dispatch({
       action: "GO_TO_LOCATION",
       location: "COPS"
     });
-  }
-
-  const myLocation = game.locations.find((l) => l.name === me.location);
-
-  if (!myLocation) {
-    throw Error("User is at nonexistent location " + me.location);
-  }
-
-  const requiresMyAction = me === playerWithTurn || isChoosingCard(me, game);
 
   const canGoToCops = playerCanGoToTheCops(me, game);
 
@@ -546,10 +358,15 @@ const GameScreen = ({
           if (seat === "EMPTY") {
             return renderEmptyPlayer(playerNumber);
           } else {
-            return renderPlayer(
-              otherPlayersClockwiseFromMe[seat],
-              game,
-              playerNumber
+            return (
+              <Opponent
+                me={me}
+                game={game}
+                player={otherPlayersClockwiseFromMe[seat]}
+                onSpyConfirm={onSpyConfirm}
+                onOpponentHandClick={onOpponentHandClick}
+                playerNumber={playerNumber}
+              />
             );
           }
         });
@@ -590,11 +407,10 @@ const GameScreen = ({
               return {};
             })();
 
-            function onLocationClick(
-              game: Game<"UI">,
+            const onLocationClick = (
+              game: GameInStartedState<"UI">,
               myself: GoatPlayer<"UI">
-            ) {
-              if (game.state !== "ONGOING") return;
+            ) => {
               if (game.substate.expectedAction !== "GO_TO_LOCATION") return;
               const activePlayer = getActivePlayer(game);
               if (activePlayer.color !== myself.color) return;
@@ -604,18 +420,14 @@ const GameScreen = ({
                 action: "GO_TO_LOCATION",
                 location: l.name
               });
-            }
+            };
 
-            function onStashCardClick(
-              game: Game<"UI">,
+            const onStashCardClick = (
+              game: GameInStartedState<"UI">,
               myself: GoatPlayer<"UI"> & { me: true },
               stashCardIndex: number
-            ) {
-              if (
-                game.state !== "ONGOING" ||
-                game.substate.expectedAction !== "STASH_CHOOSE_CARD"
-              )
-                return;
+            ) => {
+              if (game.substate.expectedAction !== "STASH_CHOOSE_CARD") return;
               const activePlayer = getActivePlayer(game);
               if (activePlayer?.color !== myself.color) return;
 
@@ -623,7 +435,7 @@ const GameScreen = ({
                 action: "STASH_CHOOSE_CARD",
                 stashCardIndex
               });
-            }
+            };
 
             const shouldHighlightLocation =
               isMyTurn &&

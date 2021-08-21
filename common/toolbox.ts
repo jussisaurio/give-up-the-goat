@@ -30,3 +30,5 @@ export const validateNickname = (n: string): NicknameValidationResult => {
     ? { ok: true }
     : { ok: false, reason: "INVALID_CHARACTERS" };
 };
+
+export const noop = () => {};
