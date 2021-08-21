@@ -389,7 +389,10 @@ const GameScreen = ({
           <div style={{ color: mapPlayerColorToUIColor(me.color) }}>
             You are {formatNickname(me)}
           </div>
-          <div>{formatPlayerActionText(game, me)}</div>.
+          <div className={me === playerWithTurn ? "turnAnimation" : ""}>
+            {formatPlayerActionText(game, me)}
+          </div>
+          .
           <div className="smallerText">
             You think the scapegoat is{" "}
             <span style={{ color: me.suspect }}>
