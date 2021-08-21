@@ -25,7 +25,7 @@ const io = new Server(httpServer, { cors: { origin: "*" } });
 
 // SESSIONS
 const cookiemw = session({
-  cookie: { httpOnly: true },
+  cookie: { httpOnly: true, sameSite: "lax" },
   saveUninitialized: true,
   resave: true,
   secret: process.env.COOKIE_SECRET ?? "SUPER_DUPER_SECRET"
