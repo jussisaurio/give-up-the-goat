@@ -360,6 +360,7 @@ const GameScreen = ({
           } else {
             return (
               <Opponent
+                key={playerNumber}
                 me={me}
                 game={game}
                 player={otherPlayersClockwiseFromMe[seat]}
@@ -548,6 +549,7 @@ const GameScreen = ({
               <div key={e.ts} className="gameLogEntry">
                 {formatLogEntry(e, game).map((entry) => (
                   <span
+                    key={entry.text + e.ts}
                     style={{
                       fontWeight: entry.bold ? "bold" : undefined,
                       color: entry.color ?? "black",
