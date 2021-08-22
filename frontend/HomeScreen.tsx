@@ -8,11 +8,11 @@ type Props = {
   onChangeNickname: (n: string) => void;
 };
 
-export const HomeScreen = ({
+export const HomeScreen: React.FC<Props> = ({
   nickname,
   onCreateGameClick,
   onChangeNickname
-}: Props) => {
+}) => {
   return (
     <section className="fixedCenterContainer">
       <TitleAndLogo />

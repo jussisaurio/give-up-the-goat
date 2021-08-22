@@ -2,7 +2,9 @@ import React from "react";
 import { GoatPlayer } from "../common/game";
 import { formatNickname, mapPlayerColorToUIColor } from "./format";
 
-export const Go = ({ player }: { player: GoatPlayer<"UI"> & { me: true } }) => (
+type Props = { player: GoatPlayer<"UI"> & { me: true } };
+
+export const Go: React.FC<Props> = ({ player }) => (
   <div className="go">
     <div>The game starts!</div>
     <div>

@@ -8,7 +8,7 @@ import {
 export const isChoosingCard = <S extends StateType>(
   player: GoatPlayer<S>,
   game: GameInStartedState<S>
-) => {
+): boolean => {
   const substate = game.substate;
   if (substate.expectedAction === "TRADE_CHOOSE_CARD") {
     const activePlayer = getActivePlayer(game);
@@ -44,7 +44,7 @@ export const isChoosingCard = <S extends StateType>(
 export const playerCanGoToTheCops = <S extends StateType>(
   player: GoatPlayer<S>,
   game: GameInStartedState<S>
-) => {
+): boolean => {
   if (game.state !== "ONGOING") return false;
 
   const isMyTurn = game.players.indexOf(player) === game.activePlayer;
@@ -61,7 +61,7 @@ export const playerCanGoToTheCops = <S extends StateType>(
 
 export const getActivePlayer = <S extends StateType>(
   game: GameInStartedState<S>
-) => game.players.find((p, i) => i === game.activePlayer)!;
+): GoatPlayer<S> => game.players.find((p, i) => i === game.activePlayer)!;
 
 export const getMe = (
   game: GameInStartedState<"UI">
@@ -78,7 +78,7 @@ export const isFrameCard = (
   player: GoatPlayer<"UI">,
   cardIndex: number,
   game: GameInStartedState<"UI">
-) => {
+): boolean => {
   return (
     "frameCards" in game &&
     game.frameCards.some(

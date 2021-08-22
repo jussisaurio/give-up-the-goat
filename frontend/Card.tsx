@@ -2,8 +2,7 @@ import React, { useLayoutEffect } from "react";
 import { Card } from "../common/game";
 import { mapPlayerColorToUIColor } from "./format";
 import type { GameAnimation } from "./animations";
-
-const noop = () => {};
+import { noop } from "../common/toolbox";
 
 type Props = {
   id?: string;
@@ -53,7 +52,7 @@ const BaseCard: React.FC<Omit<Props, "card">> = ({
   );
 };
 
-export const PlayingCard = ({
+export const PlayingCard: React.FC<Props> = ({
   id,
   card,
   className,
@@ -62,7 +61,7 @@ export const PlayingCard = ({
   selectable = false,
   disabled = false,
   onClick
-}: Props) => {
+}) => {
   const baseProps = {
     id,
     onClick,

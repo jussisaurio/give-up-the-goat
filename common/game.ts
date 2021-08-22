@@ -376,6 +376,7 @@ export type SubState =
     };
 
 export type StartedGame<S extends StateType> = {
+  state: StartedState;
   substate: SubState;
   id: string;
   activePlayer: number;
@@ -384,7 +385,7 @@ export type StartedGame<S extends StateType> = {
   locations: LocationArea<S>[];
   playerInfos: PlayerInfo[];
   events: UserFacingGameEvent[];
-} & (S extends "SERVER" ? { scapegoat: PlayerColor } : {});
+} & (S extends "SERVER" ? { scapegoat: PlayerColor } : {}); // eslint-disable-line
 
 export type StartedState =
   | "ONGOING"
@@ -451,7 +452,7 @@ export const dealInitialHands = (
   return dealtInPlayers;
 };
 
-export const shuffle = <T>(arr: T[]) => {
+export const shuffle = <T>(arr: T[]): T[] => {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -611,7 +612,7 @@ export const playTurn = (
   }
 
   const logAndFail = (
-    reason: string = `Expecting ${game.substate.expectedAction}, got ${action.action}`
+    reason = `Expecting ${game.substate.expectedAction}, got ${action.action}`
   ) => {
     console.error("Invalid action by " + playerId + ", " + reason);
     console.error(JSON.stringify(action, null, 2));
@@ -790,6 +791,9 @@ export const playTurn = (
             }
           ];
         }
+        return logAndFail(
+          "Illegal state in PREPARE: preparation tokens count doesnt match 0, 1 or 2"
+        );
       }
       case "SPY": {
         return [
@@ -881,7 +885,7 @@ export const playTurn = (
     const { otherPlayerId } = game.substate;
 
     const otherPlayer = game.players.find(
-      (p, i) => p.playerInfo.id === otherPlayerId
+      (p) => p.playerInfo.id === otherPlayerId
     )!;
 
     if (
@@ -1253,7 +1257,7 @@ const COPS_CHECK_TIMEOUT = 3000;
 export const handleCopsCheck = (
   game: Game<"SERVER"> & { state: "PAUSED_FOR_COPS_CHECK" },
   callback: AfterCopsCheckCallback
-) => {
+): void => {
   setTimeout(() => {
     const finishedGame: Game<"SERVER"> = {
       ...game,
@@ -1276,7 +1280,7 @@ const FRAME_CHECK_TIMEOUT = 6000;
 export const handleFrameCheck = (
   game: Game<"SERVER"> & { state: "PAUSED_FOR_FRAME_CHECK" },
   callback: FrameCallback
-) => {
+): void => {
   const chosenCards = game.frameCards.map(({ playerId, playerCardIndex }) => {
     const player = game.players.find((p) => p.playerInfo.id === playerId)!;
     const card = player.cards[playerCardIndex];
@@ -1499,7 +1503,7 @@ export const stripSecretInfoFromGame = (
               preparationTokens: p.preparationTokens,
               location: p.location,
               me: false,
-              cards: p.cards.map((card, i) =>
+              cards: p.cards.map((card) =>
                 game.substate.expectedAction === "SPY_ON_PLAYER_CONFIRM" &&
                 isActivePlayer &&
                 game.substate.otherPlayerId === p.playerInfo.id

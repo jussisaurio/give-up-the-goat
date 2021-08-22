@@ -2,13 +2,13 @@
 
 import { Card } from "./game";
 
-export const createGameCode = () =>
+export const createGameCode = (): string =>
   Math.random().toString(36).slice(2, 8).toUpperCase();
 
-export const getRandomElement = <T>(arr: T[]) =>
+export const getRandomElement = <T>(arr: T[]): T =>
   arr[Math.floor(Math.random() * arr.length)];
 
-export const formatCardColor = (c: Card) => {
+export const formatCardColor = (c: Card): string => {
   if ("color" in c) return c.color;
   if ("colors" in c) return c.colors.join("/");
   if (c.type === "neutral") return "GREY";
@@ -31,4 +31,4 @@ export const validateNickname = (n: string): NicknameValidationResult => {
     : { ok: false, reason: "INVALID_CHARACTERS" };
 };
 
-export const noop = () => {};
+export const noop = (): null => null;

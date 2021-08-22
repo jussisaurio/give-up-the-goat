@@ -1,6 +1,6 @@
 import React from "react";
 
-export const TitleAndLogo = () => (
+export const TitleAndLogo: React.FC = () => (
   <>
     <img
       style={{ width: "auto", height: "100px" }}

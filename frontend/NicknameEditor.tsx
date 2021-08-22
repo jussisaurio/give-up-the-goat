@@ -7,7 +7,7 @@ type Props = {
   onSubmit: (n: string) => void;
 };
 
-export const NicknameEditor = ({ current = "", onSubmit }: Props) => {
+export const NicknameEditor: React.FC<Props> = ({ current = "", onSubmit }) => {
   const [nicknameInput, setNicknameInput] = useState(current);
 
   useEffect(() => {

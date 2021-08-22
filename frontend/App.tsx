@@ -375,7 +375,7 @@ const GameScreen = ({
       <div className="common">
         {game.locations
           .filter((l) => l.name !== "COPS")
-          .map((l, i) => {
+          .map((l) => {
             const myLocation = me.location === l.name;
             const myTurn =
               game.players.findIndex((p) => p === me) === game.activePlayer;
@@ -626,12 +626,12 @@ const App = () => {
 
     const lastEvent = game.events[game.events.length - 1];
 
-    SOUNDS.TICK.play().catch(() => {});
+    SOUNDS.TICK.play().catch(noop);
 
     if (!("action" in lastEvent)) {
       switch (lastEvent.event) {
         case "FRAME_FAILURE":
-          SOUNDS.FRAME_FAILURE.play().catch(() => {});
+          SOUNDS.FRAME_FAILURE.play().catch(noop);
           return;
       }
       return;
@@ -640,7 +640,7 @@ const App = () => {
     switch (lastEvent.action) {
       case "FRAME_CHOOSE_CARD": {
         game.state !== "PAUSED_FOR_FRAME_CHECK" &&
-          SOUNDS.PAGE_FLIP.play().catch(() => {});
+          SOUNDS.PAGE_FLIP.play().catch(noop);
         return;
       }
       case "GO_TO_LOCATION": {
@@ -648,42 +648,40 @@ const App = () => {
           lastEvent.location === "FRAME/STEAL" &&
           game.substate.expectedAction === "FRAME_CHOOSE_CARD"
         ) {
-          SOUNDS.FRAME_ATTEMPT.play().catch(() => {});
-        } else if (
-          lastEvent.location === "FRAME/STEAL" &&
-          game.substate.expectedAction === "STEAL_CHOOSE_PLAYER"
-        ) {
+          SOUNDS.FRAME_ATTEMPT.play().catch(noop);
         }
         return;
       }
       case "SPY_ON_PLAYER": {
-        SOUNDS.CARD.play().catch(() => {});
+        SOUNDS.CARD.play().catch(noop);
         return;
       }
       case "SPY_ON_PLAYER_CONFIRM": {
-        SOUNDS.CARD.play().catch(() => {});
+        SOUNDS.CARD.play().catch(noop);
+        return;
       }
       case "STASH_CHOOSE_CARD": {
-        SOUNDS.PAGE_FLIP.play().catch(() => {});
+        SOUNDS.PAGE_FLIP.play().catch(noop);
         return;
       }
       case "STASH_RETURN_CARD": {
-        SOUNDS.PAGE_FLIP.play().catch(() => {});
+        SOUNDS.PAGE_FLIP.play().catch(noop);
         return;
       }
       case "STEAL_CHOOSE_PLAYER": {
-        SOUNDS.STEAL.play().catch(() => {});
+        SOUNDS.STEAL.play().catch(noop);
+        return;
       }
       case "SWAP_EVIDENCE": {
-        SOUNDS.PAGE_FLIP.play().catch(() => {});
+        SOUNDS.PAGE_FLIP.play().catch(noop);
         return;
       }
       case "TRADE_CHOOSE_CARD": {
-        SOUNDS.PAGE_FLIP.play().catch(() => {});
+        SOUNDS.PAGE_FLIP.play().catch(noop);
         return;
       }
       case "TRADE_CHOOSE_PLAYER": {
-        SOUNDS.GOAT.play().catch(() => {});
+        SOUNDS.GOAT.play().catch(noop);
         return;
       }
     }
@@ -694,15 +692,15 @@ const App = () => {
 
     switch (game.state) {
       case "ONGOING": {
-        SOUNDS.GOAT.play();
+        SOUNDS.GOAT.play().catch(noop);
         return;
       }
       case "PAUSED_FOR_FRAME_CHECK": {
-        SOUNDS.FRAME_CHECK.play().catch(() => {});
+        SOUNDS.FRAME_CHECK.play().catch(noop);
         return;
       }
       case "PAUSED_FOR_COPS_CHECK": {
-        SOUNDS.COPS.play().catch(() => {});
+        SOUNDS.COPS.play().catch(noop);
         return;
       }
       case "FINISHED": {
@@ -713,14 +711,14 @@ const App = () => {
         const framed = activePlayer.location === "FRAME/STEAL";
 
         if (framed) {
-          SOUNDS.FRAME_SUCCESS.play().catch(() => {});
+          SOUNDS.FRAME_SUCCESS.play().catch(noop);
         } else {
           if (me === scapegoat) {
             // I called the cops successfully
-            SOUNDS.STEAL.play().catch(() => {});
+            SOUNDS.STEAL.play().catch(noop);
           } else {
             // Someone else called cops
-            SOUNDS.GOAT.play().catch(() => {});
+            SOUNDS.GOAT.play().catch(noop);
           }
         }
         return;
@@ -729,10 +727,6 @@ const App = () => {
         return;
     }
   }, [game?.state]);
-
-  function handleGameActionEvent(e: { game: Game<"UI"> }) {
-    setGame(e.game);
-  }
 
   useEffect(() => {
     const eventListener = (msg: ServerEvent) => {

@@ -15,7 +15,7 @@ import {
 import { createRandomNickname } from "../common/nicknameCreator";
 import { ClientEvent, ServerEvent } from "../common/eventTypes";
 import { IncomingMessage, NextFunction } from "connect";
-import { createGameCode, validateNickname } from "../common/toolbox";
+import { createGameCode, noop, validateNickname } from "../common/toolbox";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
 
 // SERVER INIT
@@ -84,7 +84,7 @@ function sendStrippedGameStateToEveryPlayerInGame(code: string) {
         });
       }
     })
-    .catch(() => {});
+    .catch(noop);
 }
 
 setInterval(() => {
@@ -92,7 +92,7 @@ setInterval(() => {
     .then((sockets) => {
       console.log("DEBUG - Number of connected sockets: " + sockets.length);
     })
-    .catch(() => {});
+    .catch(noop);
 }, 10000);
 
 io.on("connection", (socket) => {
@@ -185,7 +185,6 @@ io.on("connection", (socket) => {
 
       sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
     } else if (msg.type === "GAME_REMAKE") {
-      const { code } = msg.payload;
       const game = games[msg.payload.code];
       if (!game) {
         return emitErrorToUser(socket, "GAME_DOESNT_EXIST");

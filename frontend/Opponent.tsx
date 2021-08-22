@@ -20,14 +20,14 @@ type Props = {
   onSpyConfirm: () => void;
 };
 
-export const Opponent = ({
+export const Opponent: React.FC<Props> = ({
   me,
   player,
   playerNumber,
   game,
   onOpponentHandClick,
   onSpyConfirm
-}: Props) => {
+}) => {
   const meHasTurn = game.players.indexOf(me) === game.activePlayer;
   const opponentHasTurn = game.players.indexOf(player) === game.activePlayer;
   const isChoosing = isChoosingCard(player, game);

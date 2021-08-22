@@ -2,11 +2,9 @@ import React from "react";
 import { PlayerColor } from "../common/game";
 import { mapPlayerColorToUIColor } from "./format";
 
-type PlayerTokenProps = { backgroundColor: PlayerColor; playerId: string };
-export const PlayerToken = ({
-  backgroundColor,
-  playerId
-}: PlayerTokenProps) => {
+type Props = { backgroundColor: PlayerColor; playerId: string };
+
+export const PlayerToken: React.FC<Props> = ({ backgroundColor, playerId }) => {
   return (
     <div
       id={"playerToken-" + playerId}

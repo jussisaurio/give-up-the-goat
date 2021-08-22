@@ -1,4 +1,4 @@
-import { Game, GameAction, GameInStartedState } from "./game";
+import { Game, GameAction } from "./game";
 
 export type ClientEvent =
   | { type: "CHANGE_NICKNAME"; nickname: string }

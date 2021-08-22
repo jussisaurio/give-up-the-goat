@@ -1,5 +1,4 @@
 import {
-  Card,
   FrameCard,
   GameInStartedState,
   GoatPlayer,
@@ -12,11 +11,11 @@ import {
 import { NicknameValidationResult } from "../common/toolbox";
 import { getActivePlayer, isChoosingCard } from "../common/logicHelpers";
 
-export function formatNickname(p: GoatPlayer<"UI">) {
+export function formatNickname(p: GoatPlayer<"UI">): string {
   return `${p.playerInfo.nickname} (${p.color})`;
 }
 
-export const mapPlayerColorToUIColor = (color: PlayerColor) => {
+export const mapPlayerColorToUIColor = (color: PlayerColor): string => {
   return (color.toUpperCase() === "ORANGE" ? "chocolate" : color).toLowerCase();
 };
 
@@ -213,7 +212,7 @@ export const formatLogEntry = (
 export function formatPlayerActionText(
   game: GameInStartedState<"UI">,
   player: GoatPlayer<"UI">
-) {
+): string {
   const substate = game.substate;
   const activePlayer = getActivePlayer(game);
 
@@ -277,7 +276,7 @@ export function formatPlayerActionText(
 
 export const formatNicknameValidationError = (
   e: NicknameValidationResult & { ok: false }
-) => {
+): string => {
   switch (e.reason) {
     case "EMPTY":
       return "";

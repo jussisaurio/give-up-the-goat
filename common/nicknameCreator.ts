@@ -74,7 +74,7 @@ const NOUNS = [
   "Whale"
 ];
 
-export const createRandomNickname = () =>
+export const createRandomNickname = (): string =>
   `${getRandomElement(ADVERBS)} ${getRandomElement(
     ADJECTIVES
   )} ${getRandomElement(NOUNS)}`;

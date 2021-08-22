@@ -16,5 +16,5 @@ export const SEATING_BY_PLAYER_COUNT: Record<
   6: [0, 1, 2, 3, 4]
 };
 
-export const getSeatingDesignation = (n: PlayerCount) =>
+export const getSeatingDesignation = (n: PlayerCount): SeatingDesignation[] =>
   SEATING_BY_PLAYER_COUNT[n];

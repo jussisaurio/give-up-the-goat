@@ -8,7 +8,7 @@ type Props = {
   onRemake: (e: React.MouseEvent) => void;
 };
 
-export const EndGameScreenContent = ({ game, onRemake }: Props) => {
+export const EndGameScreenContent: React.FC<Props> = ({ game, onRemake }) => {
   const backToLobbyButton = (
     <button className="endButton" onClick={() => window.location.replace("/")}>
       Back to lobby

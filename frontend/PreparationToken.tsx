@@ -8,7 +8,7 @@ type Props = {
   token: "TOKEN-1" | "TOKEN-2";
 };
 
-export const PreparationToken = ({ token, player, game }: Props) => {
+export const PreparationToken: React.FC<Props> = ({ token, player, game }) => {
   const animation =
     game && player
       ? getPreparationTokenFliesTowardsPlayerAnimation(game, player)

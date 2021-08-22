@@ -25,7 +25,7 @@ const getPreparationTokenEl = (token: "TOKEN-1" | "TOKEN-2") => {
   return el;
 };
 
-export function ensurePreparationTokenLocations(force = false) {
+export function ensurePreparationTokenLocations(force = false): void {
   const t1 = getPreparationTokenEl("TOKEN-1");
   const t2 = getPreparationTokenEl("TOKEN-2");
   if (t1 && t2) {
@@ -100,7 +100,7 @@ export const getCardFlyTowardsPlayerAnimation = (
   game: GameInStartedState<"UI">,
   player: GoatPlayer<"UI">,
   i: number
-) => {
+): GameAnimation | undefined => {
   if (
     game.substate.expectedAction === "SWAP_EVIDENCE" &&
     game.substate.location === "TRADE"
@@ -180,7 +180,7 @@ export const getCardFlyTowardsPlayerAnimation = (
 export const getCardFlyTowardsLocationAnimation = (
   game: GameInStartedState<"UI">,
   location: LocationArea<"UI">
-) => {
+): GameAnimation | undefined => {
   if (game.substate.expectedAction === "GO_TO_LOCATION") {
     if (game.events.length < 1) return;
     const [ev] = game.events.slice(-1);
@@ -216,7 +216,7 @@ export const getCardFlyTowardsLocationAnimation = (
 export const getCardFlyTowardsStashAnimation = (
   game: GameInStartedState<"UI">,
   stashCardIndex: number
-) => {
+): GameAnimation | undefined => {
   if (game.substate.expectedAction === "SWAP_EVIDENCE") {
     if (game.events.length < 2) return;
     const [ev1, ev2] = game.events.slice(-2);
@@ -241,7 +241,6 @@ export const getCardFlyTowardsStashAnimation = (
       const playerEl = getPlayerCardEl(player, ev2.playerCardIndex);
 
       if (locationCardEl && playerEl) {
-        const id = "STASH";
         return createMoveAnimationFromElements(playerEl, locationCardEl);
       }
     }
@@ -251,7 +250,7 @@ export const getCardFlyTowardsStashAnimation = (
 export const getPreparationTokenFliesTowardsPlayerAnimation = (
   game: GameInStartedState<"UI">,
   player: GoatPlayer<"UI">
-) => {
+): GameAnimation | undefined => {
   if (game.events.length < 1) return;
   if (game.substate.expectedAction !== "SWAP_EVIDENCE") return;
   const activePlayer = getActivePlayer(game);
