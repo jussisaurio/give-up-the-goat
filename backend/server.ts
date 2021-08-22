@@ -52,6 +52,16 @@ function addSocketToSession(
   socketToSession.set(socket, sid);
 }
 
+type ConnectedUser = Socket | RemoteSocket<DefaultEventsMap>;
+
+function emitEventToUser(socket: ConnectedUser, event: ServerEvent) {
+  socket.emit("SERVER_EVENT", event);
+}
+
+function emitErrorToUser(socket: ConnectedUser, error: string) {
+  socket.emit("SERVER_ERROR", error);
+}
+
 function sendStrippedGameStateToEveryPlayerInGame(code: string) {
   void io
     .in(code)
@@ -65,10 +75,9 @@ function sendStrippedGameStateToEveryPlayerInGame(code: string) {
         const sid = socketToSession.get(s);
         if (!sid || !game.playerInfos.some((pi) => pi.id === sid)) continue;
         const strippedState = stripSecretInfoFromGame(sid, game);
-        s.emit("SERVER_EVENT", {
-          type: "GAME_ACTION_EVENT",
+        emitEventToUser(s, {
+          type: "GAME_STATE_UPDATE",
           payload: {
-            type: "GAME_TICK",
             code,
             game: strippedState
           }
@@ -100,14 +109,6 @@ io.on("connection", (socket) => {
     payload: { nickname: nicknames[uid] }
   });
 
-  function emitEventToUser(event: ServerEvent) {
-    socket.emit("SERVER_EVENT", event);
-  }
-
-  function emitErrorToUser(error: string) {
-    socket.emit("SERVER_ERROR", error);
-  }
-
   socket.on("CLIENT_EVENT", (msg: ClientEvent) => {
     if (msg.type === "CHANGE_NICKNAME") {
       if (validateNickname(msg.nickname).ok) {
@@ -134,16 +135,16 @@ io.on("connection", (socket) => {
     } else if (msg.type === "GAME_JOIN") {
       const game = games[msg.payload.code];
       if (!game) {
-        return emitErrorToUser("GAME_DOESNT_EXIST");
+        return emitErrorToUser(socket, "GAME_DOESNT_EXIST");
       } else if (game.playerInfos.some((pi) => pi.id === uid)) {
         // Already joined
         socket.join(msg.payload.code);
         sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
         return;
       } else if (game.state !== "WAITING_FOR_PLAYERS") {
-        return emitErrorToUser("GAME_NOT_WAITING_FOR_PLAYERS");
+        return emitErrorToUser(socket, "GAME_NOT_WAITING_FOR_PLAYERS");
       } else if (game.playerInfos.length === 6) {
-        return emitErrorToUser("GAME_FULL");
+        return emitErrorToUser(socket, "GAME_FULL");
       }
 
       // Add player to in memory game
@@ -164,18 +165,18 @@ io.on("connection", (socket) => {
       games[code] = createGame();
 
       // Let user know the game was created
-      emitEventToUser({ type: "GAME_CREATED", payload: { code } });
+      emitEventToUser(socket, { type: "GAME_CREATED", payload: { code } });
     } else if (msg.type === "GAME_START") {
       const code = msg.payload.code;
 
       const game = games[code];
 
       if (!game) {
-        return emitErrorToUser("GAME_DOESNT_EXIST");
+        return emitErrorToUser(socket, "GAME_DOESNT_EXIST");
       } else if (game.state !== "WAITING_FOR_PLAYERS") {
-        return emitErrorToUser("GAME_NOT_WAITING_FOR_PLAYERS");
+        return emitErrorToUser(socket, "GAME_NOT_WAITING_FOR_PLAYERS");
       } else if (game.playerInfos.length < 3) {
-        return emitErrorToUser("GAME_NOT_ENOUGH_PLAYERS_TO_START");
+        return emitErrorToUser(socket, "GAME_NOT_ENOUGH_PLAYERS_TO_START");
       }
 
       const activatedGame = activateGame(game);
@@ -187,11 +188,11 @@ io.on("connection", (socket) => {
       const { code } = msg.payload;
       const game = games[msg.payload.code];
       if (!game) {
-        return emitErrorToUser("GAME_DOESNT_EXIST");
+        return emitErrorToUser(socket, "GAME_DOESNT_EXIST");
       } else if (game.state !== "FINISHED") {
-        return emitErrorToUser("GAME_NOT_FINISHED");
+        return emitErrorToUser(socket, "GAME_NOT_FINISHED");
       } else if (!game.playerInfos.some((pi) => pi.id === uid)) {
-        return emitErrorToUser("USER_NOT_IN_GAME");
+        return emitErrorToUser(socket, "USER_NOT_IN_GAME");
       }
 
       const newGame = activateGame(createGame(game.playerInfos));
@@ -201,15 +202,15 @@ io.on("connection", (socket) => {
       const game = games[msg.code];
 
       if (!game) {
-        return emitErrorToUser("GAME_DOESNT_EXIST");
+        return emitErrorToUser(socket, "GAME_DOESNT_EXIST");
       } else if (game.state !== "ONGOING") {
-        return emitErrorToUser("GAME_NOT_IN_PROGRESS");
+        return emitErrorToUser(socket, "GAME_NOT_IN_PROGRESS");
       }
 
       const [ok, updatedGame] = playTurn(game, uid, msg.payload);
 
       if (!ok || updatedGame.state === "WAITING_FOR_PLAYERS") {
-        return emitErrorToUser("INVALID_GAME_ACTION");
+        return emitErrorToUser(socket, "INVALID_GAME_ACTION");
       }
 
       games[msg.code] = updatedGame;

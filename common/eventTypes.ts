@@ -1,10 +1,4 @@
-import { Game, GameAction, Card, GameInStartedState } from "./game";
-
-export type GameActionEvent = {
-  type: "GAME_TICK";
-  code: string;
-  game: GameInStartedState<"UI">;
-};
+import { Game, GameAction, GameInStartedState } from "./game";
 
 export type ClientEvent =
   | { type: "CHANGE_NICKNAME"; nickname: string }
@@ -32,24 +26,19 @@ export type ClientEvent =
 
 export type ServerEvent =
   | {
-      type: "GAME_JOINED";
-      payload: { game: Game<"UI">; code: string; nickname: string };
-    }
-  | {
       type: "GAME_CREATED";
       payload: {
         code: string;
       };
     }
   | {
-      type: "GAME_STARTED";
-      payload: { code: string; game: GameInStartedState<"UI"> };
-    }
-  | {
       type: "ASSIGN_NICKNAME";
       payload: { nickname: string };
     }
   | {
-      type: "GAME_ACTION_EVENT";
-      payload: GameActionEvent;
+      type: "GAME_STATE_UPDATE";
+      payload: {
+        code: string;
+        game: Game<"UI">;
+      };
     };

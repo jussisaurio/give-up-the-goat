@@ -741,14 +741,7 @@ const App = () => {
         setNickname(msg.payload.nickname);
       } else if (msg.type === "GAME_CREATED") {
         history.push("/game/" + msg.payload.code);
-      } else if (msg.type === "GAME_JOINED") {
-        const game = msg.payload.game;
-        setGame(game);
-      } else if (msg.type === "GAME_STARTED") {
-        SOUNDS.GOAT.play().catch(() => {});
-        if (msg.payload.code !== codeFromURL) return;
-        setGame(msg.payload.game);
-      } else if (msg.type === "GAME_ACTION_EVENT") {
+      } else if (msg.type === "GAME_STATE_UPDATE") {
         if (msg.payload.code !== codeFromURL) return;
         setGame(msg.payload.game);
       }
