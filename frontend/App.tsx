@@ -12,8 +12,7 @@ import {
   Game,
   GameAction,
   GameInStartedState,
-  GoatPlayer,
-  PlayerCount
+  GoatPlayer
 } from "../common/game";
 import "./App.css";
 import { ServerEvent } from "../common/eventTypes";
@@ -45,6 +44,7 @@ import { PreparationToken } from "./PreparationToken";
 import { Opponent } from "./Opponent";
 import { noop } from "../common/toolbox";
 import { PlayerToken } from "./PlayerToken";
+import { PlayerCount } from "../common/cardsAndPlayers";
 
 function usePrevious<T>(value: T): T | undefined {
   const ref = React.useRef<T>();

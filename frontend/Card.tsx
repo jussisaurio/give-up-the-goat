@@ -1,8 +1,8 @@
 import React, { useLayoutEffect } from "react";
-import { Card } from "../common/game";
 import { mapPlayerColorToUIColor } from "./format";
 import type { GameAnimation } from "./animations";
 import { noop } from "../common/toolbox";
+import { Card } from "../common/cardsAndPlayers";
 
 type Props = {
   id?: string;

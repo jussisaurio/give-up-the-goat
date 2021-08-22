@@ -2,7 +2,7 @@
 // Fill or leave blank the other 5 seats conditionally,
 // starting from the left of the player.
 
-import { PlayerCount } from "../common/game";
+import { PlayerCount } from "../common/cardsAndPlayers";
 
 type SeatingDesignation = "EMPTY" | number;
 

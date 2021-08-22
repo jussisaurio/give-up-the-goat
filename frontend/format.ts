@@ -3,13 +3,13 @@ import {
   GameInStartedState,
   GoatPlayer,
   LocationArea,
-  PlayerColor,
   StartedGame,
   UICard,
   UserFacingGameEvent
 } from "../common/game";
 import { NicknameValidationResult } from "../common/toolbox";
 import { getActivePlayer, isChoosingCard } from "../common/logicHelpers";
+import { PlayerColor } from "../common/cardsAndPlayers";
 
 export function formatNickname(p: GoatPlayer<"UI">): string {
   return `${p.playerInfo.nickname} (${p.color})`;

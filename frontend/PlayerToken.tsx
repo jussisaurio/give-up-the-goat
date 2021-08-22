@@ -1,5 +1,5 @@
 import React from "react";
-import { PlayerColor } from "../common/game";
+import { PlayerColor } from "../common/cardsAndPlayers";
 import { mapPlayerColorToUIColor } from "./format";
 
 type Props = { backgroundColor: PlayerColor; playerId: string };

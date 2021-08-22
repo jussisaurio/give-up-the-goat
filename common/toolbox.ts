@@ -1,6 +1,6 @@
 // It's not as bad if you don't call it helpers.ts or utils.ts
 
-import { Card } from "./game";
+import { Card } from "./cardsAndPlayers";
 
 export const createGameCode = (): string =>
   Math.random().toString(36).slice(2, 8).toUpperCase();
