@@ -13,6 +13,7 @@ import { PreparationToken } from "./PreparationToken";
 
 type Props = {
   me: GoatPlayer<"UI"> & { me: true };
+  connected: boolean;
   player: GoatPlayer<"UI">;
   playerNumber: number;
   game: GameInStartedState<"UI">;
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export const Opponent: React.FC<Props> = ({
+  connected,
   me,
   player,
   playerNumber,
@@ -56,10 +58,13 @@ export const Opponent: React.FC<Props> = ({
       id={"player-area-" + player.playerInfo.id}
       key={playerNumber}
       style={{
-        border: `2px solid ${mapPlayerColorToUIColor(player.color)}`
+        border: `2px solid ${mapPlayerColorToUIColor(player.color)}`,
+        opacity: !connected ? 0.5 : 1
       }}
       className={`player-area player-${playerNumber}`}
     >
+      {!connected && <div className="connectionSpinner" />}
+      {!connected && <div className="disconnectionText">disconnected</div>}
       {(opponentHasTurn || isChoosing) && <div className="loader"></div>}
       <div
         style={{ color: mapPlayerColorToUIColor(player.color) }}

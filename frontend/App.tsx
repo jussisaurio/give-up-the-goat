@@ -61,9 +61,11 @@ type GameScreenProps = {
   onChangeNickname: (e: string) => void;
   nickname: string;
   dispatch: (e: GameAction) => void;
+  connectedPlayers: string[];
 };
 
 const GameScreen = ({
+  connectedPlayers,
   game,
   onStartGame,
   nickname,
@@ -358,12 +360,14 @@ const GameScreen = ({
           if (seat === "EMPTY") {
             return renderEmptyPlayer(playerNumber);
           } else {
+            const player = otherPlayersClockwiseFromMe[seat];
             return (
               <Opponent
+                connected={connectedPlayers.includes(player.playerInfo.id)}
                 key={playerNumber}
                 me={me}
                 game={game}
-                player={otherPlayersClockwiseFromMe[seat]}
+                player={player}
                 onSpyConfirm={onSpyConfirm}
                 onOpponentHandClick={onOpponentHandClick}
                 playerNumber={playerNumber}
@@ -611,6 +615,7 @@ const App = () => {
   const location = useLocation();
   const [nickname, setNickname] = useState("");
   const [game, setGame] = useState<Game<"UI"> | null>(null);
+  const [connectedPlayers, setConnectedPlayers] = useState<string[]>([]);
 
   const lastEventTimestamp =
     game && "events" in game && game.events.length > 0
@@ -738,6 +743,9 @@ const App = () => {
       } else if (msg.type === "GAME_STATE_UPDATE") {
         if (msg.payload.code !== codeFromURL) return;
         setGame(msg.payload.game);
+      } else if (msg.type === "GAME_CONNECTED_PLAYERS") {
+        if (msg.payload.code !== codeFromURL) return;
+        setConnectedPlayers(msg.payload.playerIds ?? []);
       }
     };
 
@@ -827,6 +835,7 @@ const App = () => {
       </Route>
       <Route path="/game">
         <GameScreen
+          connectedPlayers={connectedPlayers}
           nickname={nickname}
           onChangeNickname={onChangeNickname}
           onStartGame={onStartGame}

@@ -9,6 +9,7 @@ import {
   Game,
   handleCopsCheck,
   handleFrameCheck,
+  PlayerInfo,
   playTurn,
   stripSecretInfoFromGame
 } from "../common/game";
@@ -83,9 +84,48 @@ function sendStrippedGameStateToEveryPlayerInGame(code: string) {
           }
         });
       }
+      void sendPlayerConnectionStatuses(code);
     })
     .catch(noop);
 }
+
+async function sendPlayerConnectionStatuses(code: string) {
+  const sockets = await io
+    .in(code)
+    .fetchSockets()
+    .catch(() => []);
+
+  const game = games[code];
+  if (!game) {
+    return;
+  }
+
+  const connectedSockets = sockets.filter((s) => {
+    const sid = socketToSession.get(s);
+    return !!sid && game.playerInfos.some((pi) => pi.id === sid);
+  });
+
+  const connectedPlayers = sockets
+    .map((s) => socketToSession.get(s))
+    .map((sid) => !!sid && game.playerInfos.find((pi) => pi.id === sid))
+    .filter(Boolean) as PlayerInfo[];
+
+  for (const connectedSocket of connectedSockets) {
+    emitEventToUser(connectedSocket, {
+      type: "GAME_CONNECTED_PLAYERS",
+      payload: {
+        code,
+        playerIds: connectedPlayers.map((cp) => cp.id)
+      }
+    });
+  }
+}
+
+setInterval(() => {
+  for (const code of Object.keys(games)) {
+    void sendPlayerConnectionStatuses(code);
+  }
+}, 5000);
 
 setInterval(() => {
   io.fetchSockets()

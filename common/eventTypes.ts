@@ -41,4 +41,11 @@ export type ServerEvent =
         code: string;
         game: Game<"UI">;
       };
+    }
+  | {
+      type: "GAME_CONNECTED_PLAYERS";
+      payload: {
+        code: string;
+        playerIds: string[];
+      };
     };
