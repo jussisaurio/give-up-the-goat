@@ -8,6 +8,8 @@ import { getActivePlayer } from "../common/logicHelpers";
 
 let dimensionsCache: WeakMap<Element, DOMRect> = new WeakMap();
 
+export const usedAnimations: Set<number> = new Set();
+
 window.addEventListener("resize", () => {
   dimensionsCache = new WeakMap();
 });

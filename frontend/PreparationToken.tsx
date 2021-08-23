@@ -1,6 +1,9 @@
 import React, { useLayoutEffect } from "react";
 import { GameInStartedState, GoatPlayer } from "../common/game";
-import { getPreparationTokenFliesTowardsPlayerAnimation } from "./animations";
+import {
+  getPreparationTokenFliesTowardsPlayerAnimation,
+  usedAnimations
+} from "./animations";
 
 type Props = {
   game?: GameInStartedState<"UI">;
@@ -16,8 +19,9 @@ export const PreparationToken: React.FC<Props> = ({ token, player, game }) => {
 
   const ref = React.useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    if (ref.current && animation) {
+    if (ref.current && animation && !usedAnimations.has(animation.uid)) {
       ref.current.animate(animation.keyframes, animation.timing);
+      usedAnimations.add(animation.uid);
     }
   }, [ref.current, animation?.uid]);
 
