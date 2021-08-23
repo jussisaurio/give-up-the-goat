@@ -110,14 +110,28 @@ async function sendPlayerConnectionStatuses(code: string) {
     .map((sid) => !!sid && game.playerInfos.find((pi) => pi.id === sid))
     .filter(Boolean) as PlayerInfo[];
 
-  for (const connectedSocket of connectedSockets) {
-    emitEventToUser(connectedSocket, {
-      type: "GAME_CONNECTED_PLAYERS",
-      payload: {
-        code,
-        playerIds: connectedPlayers.map((cp) => cp.id)
-      }
-    });
+  // Remove player from game if they disconnect
+  if (
+    game.state === "WAITING_FOR_PLAYERS" &&
+    connectedPlayers.length !== game.playerInfos.length
+  ) {
+    games[code] = {
+      ...game,
+      playerInfos: connectedPlayers
+    };
+    sendStrippedGameStateToEveryPlayerInGame(code);
+    return;
+  } else {
+    // Otherwise just send the connection statuses to the players
+    for (const connectedSocket of connectedSockets) {
+      emitEventToUser(connectedSocket, {
+        type: "GAME_CONNECTED_PLAYERS",
+        payload: {
+          code,
+          playerIds: connectedPlayers.map((cp) => cp.id)
+        }
+      });
+    }
   }
 }
 
