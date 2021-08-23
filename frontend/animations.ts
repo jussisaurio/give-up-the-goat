@@ -8,8 +8,6 @@ import { getActivePlayer } from "../common/logicHelpers";
 
 let dimensionsCache: WeakMap<Element, DOMRect> = new WeakMap();
 
-export const usedAnimations: Set<number> = new Set();
-
 window.addEventListener("resize", () => {
   dimensionsCache = new WeakMap();
 });
@@ -63,20 +61,25 @@ export type GameAnimation = {
 };
 
 const createMoveAnimationFromElements = (
+  game: GameInStartedState<"UI">,
   source: Element,
   target: Element
 ): GameAnimation => {
   const el1Rect = getClientRect(source);
   const el2Rect = getClientRect(target);
 
-  return createMoveAnimationFromDOMRects(el1Rect, el2Rect);
+  return createMoveAnimationFromDOMRects(game, el1Rect, el2Rect);
 };
 
-const createMoveAnimationFromDOMRects = (source: DOMRect, target: DOMRect) => {
+const createMoveAnimationFromDOMRects = (
+  game: GameInStartedState<"UI">,
+  source: DOMRect,
+  target: DOMRect
+) => {
   const xDiff = source.x - target.x;
   const yDiff = source.y - target.y;
   return {
-    uid: Math.random(),
+    uid: game.events[game.events.length - 1]?.ts ?? 0,
     keyframes: [
       {
         transform: `translateX(${Math.round(xDiff)}px) translateY(${Math.round(
@@ -138,7 +141,7 @@ export const getCardFlyTowardsPlayerAnimation = (
           myTrade.playerCardIndex
         );
         if (oppEl && myEl) {
-          return createMoveAnimationFromElements(oppEl, myEl);
+          return createMoveAnimationFromElements(game, oppEl, myEl);
         }
       }
     }
@@ -156,7 +159,7 @@ export const getCardFlyTowardsPlayerAnimation = (
       const myEl = getPlayerCardEl(player, ev.playerCardIndex);
 
       if (locationCardEl && myEl) {
-        return createMoveAnimationFromElements(locationCardEl, myEl);
+        return createMoveAnimationFromElements(game, locationCardEl, myEl);
       }
     }
   } else if (game.substate.expectedAction === "STASH_RETURN_CARD") {
@@ -173,7 +176,7 @@ export const getCardFlyTowardsPlayerAnimation = (
       const myEl = getPlayerCardEl(player, i);
 
       if (locationCardEl && myEl) {
-        return createMoveAnimationFromElements(locationCardEl, myEl);
+        return createMoveAnimationFromElements(game, locationCardEl, myEl);
       }
     }
   }
@@ -209,7 +212,7 @@ export const getCardFlyTowardsLocationAnimation = (
       const playerEl = getPlayerCardEl(player, ev.playerCardIndex);
 
       if (locationCardEl && playerEl) {
-        return createMoveAnimationFromElements(playerEl, locationCardEl);
+        return createMoveAnimationFromElements(game, playerEl, locationCardEl);
       }
     }
   }
@@ -243,7 +246,7 @@ export const getCardFlyTowardsStashAnimation = (
       const playerEl = getPlayerCardEl(player, ev2.playerCardIndex);
 
       if (locationCardEl && playerEl) {
-        return createMoveAnimationFromElements(playerEl, locationCardEl);
+        return createMoveAnimationFromElements(game, playerEl, locationCardEl);
       }
     }
   }
@@ -285,7 +288,7 @@ export const getPreparationTokenFliesTowardsPlayerAnimation = (
     const newLocation = getClientRect(thiefPlayerEl);
 
     if (oldLocation && newLocation) {
-      return createMoveAnimationFromDOMRects(oldLocation, newLocation);
+      return createMoveAnimationFromDOMRects(game, oldLocation, newLocation);
     }
   }
 };

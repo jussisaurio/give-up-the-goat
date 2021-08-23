@@ -1,6 +1,6 @@
 import React, { useLayoutEffect } from "react";
 import { mapPlayerColorToUIColor } from "./format";
-import type { GameAnimation } from "./animations";
+import { GameAnimation } from "./animations";
 import { noop } from "../common/toolbox";
 import { Card } from "../common/cardsAndPlayers";
 
