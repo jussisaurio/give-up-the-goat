@@ -74,7 +74,15 @@ export const formatLogEntry = (
       case "COPS_CALLED": {
         if (game.state !== "FINISHED") return [];
         const scapegoat = game.players.find((p) => p.color === game.scapegoat)!;
-        const copCaller = game.players.find((p, i) => i === game.activePlayer)!;
+        const event = game.events.find(
+          (e) =>
+            "action" in e &&
+            e.action === "GO_TO_LOCATION" &&
+            e.location === "COPS"
+        )! as { actionPlayerId: string };
+        const copCaller = game.players.find(
+          (p) => p.playerInfo.id === event.actionPlayerId
+        )!;
         return scapegoat === copCaller
           ? [
               { text: "The scapegoat" },

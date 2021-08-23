@@ -1,5 +1,5 @@
 import React from "react";
-import { Game } from "../common/game";
+import { Game, UserFacingGameEvent } from "../common/game";
 import { getMe } from "../common/logicHelpers";
 import { mapPlayerColorToUIColor } from "./format";
 
@@ -48,7 +48,15 @@ export const EndGameScreenContent: React.FC<Props> = ({ game, onRemake }) => {
         </>
       );
     } else {
-      const copCaller = game.players.find((p, i) => i === game.activePlayer)!;
+      const event = game.events.find(
+        (e) =>
+          "action" in e &&
+          e.action === "GO_TO_LOCATION" &&
+          e.location === "COPS"
+      )! as { actionPlayerId: string };
+      const copCaller = game.players.find(
+        (p) => p.playerInfo.id === event.actionPlayerId
+      )!;
       return (
         <>
           <h1 style={{ color: mapPlayerColorToUIColor(me.color) }}>
