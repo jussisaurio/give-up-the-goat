@@ -105,10 +105,14 @@ async function sendPlayerConnectionStatuses(code: string) {
     return !!sid && game.playerInfos.some((pi) => pi.id === sid);
   });
 
-  const connectedPlayers = sockets
-    .map((s) => socketToSession.get(s))
-    .map((sid) => !!sid && game.playerInfos.find((pi) => pi.id === sid))
-    .filter(Boolean) as PlayerInfo[];
+  const connectedPlayers = [
+    ...new Set(
+      sockets
+        .map((s) => socketToSession.get(s))
+        .map((sid) => !!sid && game.playerInfos.find((pi) => pi.id === sid))
+        .filter(Boolean) as PlayerInfo[]
+    )
+  ];
 
   // Remove player from game if they disconnect
   if (
