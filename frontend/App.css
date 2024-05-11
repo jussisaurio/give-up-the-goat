@@ -434,17 +434,8 @@ button {
   margin-top: 1rem;
   display: flex;
   width: 100%;
-  justify-content: space-between;
-}
-
-.nicknameEditorInput {
-  padding: 0.3rem;
-  flex: 3;
-}
-
-.nicknameEditorButton {
-  margin-left: 0.5rem;
-  flex: 1;
+  justify-content: center;
+  gap: 8px;
 }
 
 .validationError {
