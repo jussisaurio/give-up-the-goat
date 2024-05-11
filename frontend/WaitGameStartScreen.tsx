@@ -21,6 +21,7 @@ export const WaitGameStartScreen: React.FC<Props> = ({
   const playerCount = playerInfos.length;
 
   return (
+    <main className="screen">
     <div className="fixedCenterContainer">
       <TitleAndLogo />
       <button
@@ -59,5 +60,6 @@ export const WaitGameStartScreen: React.FC<Props> = ({
         </div>
       )}
     </div>
+    </main>
   );
 };

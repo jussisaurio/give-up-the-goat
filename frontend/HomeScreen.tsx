@@ -14,6 +14,7 @@ export const HomeScreen: React.FC<Props> = ({
   onChangeNickname
 }) => {
   return (
+    <main className="screen">
     <section className="fixedCenterContainer">
       <TitleAndLogo />
       <div className="lobbyDescription">
@@ -40,5 +41,6 @@ export const HomeScreen: React.FC<Props> = ({
         If you want to join an existing game, get a link from your friend.
       </div>
     </section>
+    </main>
   );
 };

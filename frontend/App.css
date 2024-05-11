@@ -53,7 +53,7 @@ html:focus-within {
 
 /* Set core body defaults */
 body {
-  font-size: 2vh;
+  font-size: 16px;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   min-height: 100vh;
   background-color: antiquewhite;
@@ -427,7 +427,6 @@ button {
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  min-height: 8rem;
 }
 
 .nicknameEditorForm {
@@ -518,13 +517,14 @@ button {
   animation: bounce 1s ease infinite;
 }
 
+.screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+}
+
 .fixedCenterContainer {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(600px, 90%);
-  height: min(800px, 90%);
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -697,5 +697,6 @@ h1 {
 
   body {
     font-size: 1.5vh;
+    position: relative;
   }
 }
