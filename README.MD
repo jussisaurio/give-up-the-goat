@@ -6,7 +6,7 @@
 
 The game is an unofficial fan implementation that is not at all affiliated with the game author(s) or the publisher.
 
-A demo of the code of this repository is hosted [here](https://give-up-the-goat.herokuapp.com).
+A demo of the code of this repository is hosted [here](https://give-up-the-goat-lingering-sea-6625.fly.dev/).
 
 ## What is the game about?
 
