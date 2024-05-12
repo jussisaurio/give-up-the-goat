@@ -227,8 +227,15 @@ export function formatPlayerActionText(
   switch (substate.expectedAction) {
     case "SWAP_EVIDENCE": {
       if (player !== activePlayer) return "";
+      const playerHasOwnColorCardInHand = activePlayer.cards.some(
+        (c) => c.face === "UP" && (
+          c.card.type === "single" && c.card.color === activePlayer.color ||
+          c.card.type === "dual" && c.card.colors.includes(activePlayer.color) ||
+          c.card.type === "joker"
+        )
+      );
       const location = game.locations.find((l) => l.name === substate.location);
-      return `Choose a card from hand to swap with the face-up card at ${location?.userFacingName}.`;
+      return `Choose a card from hand to swap with the face-up card at ${location?.userFacingName}. ${playerHasOwnColorCardInHand ? " You must choose a card containing your own color." : ""}`;
     }
     case "FRAME_CHOOSE_CARD": {
       return isChoosingCard(player, game)

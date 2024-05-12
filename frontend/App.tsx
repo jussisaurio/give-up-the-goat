@@ -206,7 +206,6 @@ const GameScreen = ({
           <div className={me === playerWithTurn ? "turnAnimation" : ""}>
             {formatPlayerActionText(game, me)}
           </div>
-          .
           <div className="smallerText">
             You think the scapegoat is{" "}
             <span style={{ color: me.suspect }}>
