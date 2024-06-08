@@ -11,7 +11,7 @@ import {
   handleFrameCheck,
   PlayerInfo,
   playTurn,
-  stripSecretInfoFromGame
+  stripSecretInfoFromGame,
 } from "../common/game";
 import { createRandomNickname } from "../common/nicknameCreator";
 import { ClientEvent, ServerEvent } from "../common/eventTypes";
@@ -29,7 +29,7 @@ const cookiemw = session({
   cookie: { httpOnly: true, sameSite: "lax" },
   saveUninitialized: true,
   resave: true,
-  secret: process.env.COOKIE_SECRET ?? "SUPER_DUPER_SECRET"
+  secret: process.env.COOKIE_SECRET ?? "SUPER_DUPER_SECRET",
 });
 
 app.use(cookiemw);
@@ -80,8 +80,8 @@ function sendStrippedGameStateToEveryPlayerInGame(code: string) {
           type: "GAME_STATE_UPDATE",
           payload: {
             code,
-            game: strippedState
-          }
+            game: strippedState,
+          },
         });
       }
       void sendPlayerConnectionStatuses(code);
@@ -111,7 +111,7 @@ async function sendPlayerConnectionStatuses(code: string) {
         .map((s) => socketToSession.get(s))
         .map((sid) => !!sid && game.playerInfos.find((pi) => pi.id === sid))
         .filter(Boolean) as PlayerInfo[]
-    )
+    ),
   ];
 
   // Remove player from game if they disconnect
@@ -121,7 +121,7 @@ async function sendPlayerConnectionStatuses(code: string) {
   ) {
     games[code] = {
       ...game,
-      playerInfos: connectedPlayers
+      playerInfos: connectedPlayers,
     };
     sendStrippedGameStateToEveryPlayerInGame(code);
     return;
@@ -132,8 +132,8 @@ async function sendPlayerConnectionStatuses(code: string) {
         type: "GAME_CONNECTED_PLAYERS",
         payload: {
           code,
-          playerIds: connectedPlayers.map((cp) => cp.id)
-        }
+          playerIds: connectedPlayers.map((cp) => cp.id),
+        },
       });
     }
   }
@@ -164,7 +164,7 @@ io.on("connection", (socket) => {
   nicknames[uid] = nicknames[uid] ?? createRandomNickname();
   socket.emit("SERVER_EVENT", {
     type: "ASSIGN_NICKNAME",
-    payload: { nickname: nicknames[uid] }
+    payload: { nickname: nicknames[uid] },
   });
 
   socket.on("CLIENT_EVENT", (msg: ClientEvent) => {
@@ -172,7 +172,7 @@ io.on("connection", (socket) => {
       if (validateNickname(msg.nickname).ok) {
         nicknames[uid] = msg.nickname;
         Object.keys(games).forEach((code) => {
-          const game = games[code];
+          const game = games[code]!;
           if (
             game.state !== "WAITING_FOR_PLAYERS" ||
             game.playerInfos.every((pi) => pi.id !== uid)
@@ -186,7 +186,7 @@ io.on("connection", (socket) => {
         });
         socket.emit("SERVER_EVENT", {
           type: "ASSIGN_NICKNAME",
-          payload: { nickname: msg.nickname }
+          payload: { nickname: msg.nickname },
         });
       }
       return;
@@ -210,8 +210,8 @@ io.on("connection", (socket) => {
         ...game,
         playerInfos: [
           ...game.playerInfos,
-          { id: uid, nickname: msg.payload.nickname }
-        ]
+          { id: uid, nickname: msg.payload.nickname },
+        ],
       };
       socket.join(msg.payload.code);
       sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
@@ -240,7 +240,9 @@ io.on("connection", (socket) => {
       const activatedGame = activateGame(game);
 
       games[code] = activatedGame;
-
+      console.log(
+        `Game ${code} started with ${activatedGame.playerInfos.length} players`
+      );
       sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
     } else if (msg.type === "GAME_REMAKE") {
       const game = games[msg.payload.code];
@@ -254,6 +256,9 @@ io.on("connection", (socket) => {
 
       const newGame = activateGame(createGame(game.playerInfos));
       games[msg.payload.code] = newGame;
+      console.log(
+        `Game ${msg.payload.code} remade with ${newGame.playerInfos.length} players`
+      );
       sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
     } else if (msg.type === "GAME_ACTION") {
       const game = games[msg.code];
@@ -281,12 +286,14 @@ io.on("connection", (socket) => {
           );
         }
         case "PAUSED_FOR_COPS_CHECK": {
+          console.log(`Game ${msg.code} paused for cops check`);
           return handleCopsCheck(updatedGame, (finishedGame) => {
             games[msg.code] = finishedGame;
             sendStrippedGameStateToEveryPlayerInGame(msg.code);
           });
         }
         case "PAUSED_FOR_FRAME_CHECK": {
+          console.log(`Game ${msg.code} paused for frame check`);
           return handleFrameCheck(updatedGame, (gameAfterCheck) => {
             games[msg.code] = gameAfterCheck;
             sendStrippedGameStateToEveryPlayerInGame(msg.code);
