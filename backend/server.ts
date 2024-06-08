@@ -42,18 +42,18 @@ io.use((socket, next) => {
 const games: Record<string, Game<"SERVER">> = {};
 const nicknames: Record<string, string> = {};
 const socketToSession: WeakMap<
-  Socket | RemoteSocket<DefaultEventsMap>,
+  Socket | RemoteSocket<DefaultEventsMap, any>,
   string
 > = new WeakMap();
 
 function addSocketToSession(
   sid: string,
-  socket: Socket | RemoteSocket<DefaultEventsMap>
+  socket: Socket | RemoteSocket<DefaultEventsMap, any>
 ) {
   socketToSession.set(socket, sid);
 }
 
-type ConnectedUser = Socket | RemoteSocket<DefaultEventsMap>;
+type ConnectedUser = Socket | RemoteSocket<DefaultEventsMap, any>;
 
 function emitEventToUser(socket: ConnectedUser, event: ServerEvent) {
   socket.emit("SERVER_EVENT", event);
