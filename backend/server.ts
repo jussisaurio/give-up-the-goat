@@ -214,6 +214,11 @@ io.on("connection", (socket) => {
         ],
       };
       socket.join(msg.payload.code);
+      console.log(
+        `Game ${msg.payload.code} joined by ${uid}, the game now has ${
+          games[msg.payload.code].playerInfos.length
+        } players`
+      );
       sendStrippedGameStateToEveryPlayerInGame(msg.payload.code);
     } else if (msg.type === "GAME_CREATE") {
       // Create code to be used in URL of game
