@@ -290,11 +290,14 @@ const GameScreen = ({
                     playerCardIndex: i
                   });
                 } else if (
-                  game.substate.expectedAction === "FRAME_CHOOSE_CARD"
+                  game.substate.expectedAction === "FRAME_CHOOSE_CARD" &&
+                  !game.substate.cards.some(
+                    (c) => c.playerId === myself.playerInfo.id
+                  )
                 ) {
                   dispatch({
                     action: "FRAME_CHOOSE_CARD",
-                    playerCardIndex: i
+                    playerCardIndex: i,
                   });
                 }
               }
