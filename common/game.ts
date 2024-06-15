@@ -432,12 +432,13 @@ export const playTurn = (
   playerId: string,
   action: GameAction
 ): [boolean, Game<"SERVER">] => {
+  console.log(game.id, JSON.stringify(action, null, 2));
   if (game.state !== "ONGOING") {
     console.error(
       "Invalid action by " + playerId + ", game not in ONGOING state"
     );
     console.error(JSON.stringify(action, null, 2));
-    console.error(JSON.stringify(game, null, 2));
+    // console.error(JSON.stringify(game, null, 2));
     return [false, game];
   }
 
@@ -446,7 +447,7 @@ export const playTurn = (
   ) => {
     console.error("Invalid action by " + playerId + ", " + reason);
     console.error(JSON.stringify(action, null, 2));
-    console.error(JSON.stringify(game, null, 2));
+    // console.error(JSON.stringify(game, null, 2));
     return [false, game] as [boolean, Game<"SERVER">];
   };
 
