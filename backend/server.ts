@@ -293,6 +293,11 @@ io.on("connection", (socket) => {
         case "PAUSED_FOR_COPS_CHECK": {
           console.log(`Game ${msg.code} paused for cops check`);
           return handleCopsCheck(updatedGame, (finishedGame) => {
+            console.log(
+              `Game ${
+                msg.code
+              } finished, winners: ${finishedGame.winnerPlayerIds.join(", ")}`
+            );
             games[msg.code] = finishedGame;
             sendStrippedGameStateToEveryPlayerInGame(msg.code);
           });
@@ -300,6 +305,15 @@ io.on("connection", (socket) => {
         case "PAUSED_FOR_FRAME_CHECK": {
           console.log(`Game ${msg.code} paused for frame check`);
           return handleFrameCheck(updatedGame, (gameAfterCheck) => {
+            if (gameAfterCheck.state === "FINISHED") {
+              console.log(
+                `Game ${
+                  msg.code
+                } finished, winners: ${gameAfterCheck.winnerPlayerIds.join(
+                  ", "
+                )}`
+              );
+            }
             games[msg.code] = gameAfterCheck;
             sendStrippedGameStateToEveryPlayerInGame(msg.code);
           });
